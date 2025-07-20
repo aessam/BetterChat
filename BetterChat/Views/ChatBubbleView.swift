@@ -103,3 +103,71 @@ struct MessageStatusView: View {
         }
     }
 }
+
+
+private struct TypingIndicatorView: View {
+    @State private var animationPhase = 0
+    
+    var body: some View {
+        HStack {
+            HStack(spacing: 4) {
+                ForEach(0..<3) { index in
+                    Circle()
+                        .fill(Color.gray)
+                        .frame(width: 6, height: 6)
+                        .scaleEffect(animationPhase == index ? 1.2 : 0.8)
+                        .animation(
+                            Animation.easeInOut(duration: 0.6)
+                                .repeatForever(autoreverses: true)
+                                .delay(Double(index) * 0.2),
+                            value: animationPhase
+                        )
+                }
+            }
+            .padding(12)
+            .background(Color(.systemGray6))
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+            
+            Spacer()
+        }
+        .onAppear {
+            animationPhase = 0
+        }
+    }
+}
+
+private struct ThinkingIndicatorView: View {
+    let thought: String
+    
+    var body: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 4) {
+                    Image(systemName: "brain.head.profile")
+                        .font(.caption)
+                        .foregroundColor(.blue)
+                    Text("Thinking...")
+                        .font(.caption)
+                        .fontWeight(.medium)
+                        .foregroundColor(.blue)
+                }
+                
+                Text(thought)
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+                    .italic()
+            }
+            .padding(8)
+            .background(Color.blue.opacity(0.1))
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+            
+            Spacer()
+        }
+        .padding(.horizontal)
+    }
+}
+
+#Preview {
+    ThinkingIndicatorView(thought: "not sure what I should do")
+    TypingIndicatorView()
+}
