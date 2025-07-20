@@ -39,7 +39,7 @@ public struct ChatView<DataSource: ChatDataSource>: View {
     public init(
         dataSource: DataSource,
         configuration: ChatConfiguration = ChatConfiguration(),
-        sendButtonIcon: Image = Image(systemName: "arrow.up.circle.fill"),
+        sendButtonIcon: Image = Image(systemName: ChatConstants.SystemNames.sendButton),
         attachmentActions: [AttachmentAction] = []
     ) {
         self.dataSource = dataSource
@@ -47,6 +47,30 @@ public struct ChatView<DataSource: ChatDataSource>: View {
         self.sendButtonIcon = sendButtonIcon
         self.attachmentActions = attachmentActions
         self.viewModel = ChatViewModel(dataSource: dataSource)
+    }
+    
+    // MARK: - Convenience Initializers
+    public init(dataSource: DataSource) {
+        self.init(
+            dataSource: dataSource,
+            configuration: .standard()
+        )
+    }
+    
+    public init(dataSource: DataSource, theme: ChatTheme) {
+        self.init(
+            dataSource: dataSource,
+            configuration: .themed(theme)
+        )
+    }
+    
+    public init(dataSource: DataSource, configuration: ChatConfiguration) {
+        self.init(
+            dataSource: dataSource,
+            configuration: configuration,
+            sendButtonIcon: Image(systemName: ChatConstants.SystemNames.sendButton),
+            attachmentActions: []
+        )
     }
     
     public var body: some View {
@@ -102,17 +126,16 @@ public struct ChatView<DataSource: ChatDataSource>: View {
                             .id("typing-indicator")
                     }
                 }
-                .padding(.bottom, 10)
-                .padding(.top, 10)
+                .padding(.bottom, ChatConstants.Spacing.sectionSpacing)
+                .padding(.top, ChatConstants.Spacing.sectionSpacing)
             }
-            .background(configuration.generalStyle.backgroundColor)
+            .chatContainer(configuration: configuration)
             .onReceive(viewModel.scrollPublisher) { messageId in
-                withAnimation(.easeOut(duration: 0.3)) {
+                withAnimation(.easeOut(duration: configuration.generalStyle.animationDuration)) {
                     proxy.scrollTo(messageId, anchor: .bottom)
                 }
             }
         }
-        .scrollDismissesKeyboard(.interactively)
     }
     
     private var inputView: some View {
@@ -170,11 +193,11 @@ struct MessageRow<DataSource: ChatDataSource, Content: View>: View {
             // Reaction picker overlay
             if selectedMessageForReaction?.id == message.id {
                 HStack(spacing: 8) {
-                    ForEach(["❤️", "👍", "😂", "😮", "😢", "🔥"], id: \.self) { emoji in
+                    ForEach(ChatConstants.Reactions.defaultEmojis, id: \.self) { emoji in
                         Text(emoji)
-                            .font(.system(size: 30))
+                            .font(.system(size: ChatConstants.FontSizes.reactionIcon))
                             .onTapGesture {
-                                withAnimation(.easeOut(duration: 0.2)) {
+                                withAnimation(.easeOut(duration: ChatConstants.Animation.reactionTransition)) {
                                     dataSource.onReaction(emoji, to: message)
                                     selectedMessageForReaction = nil
                                 }
@@ -182,30 +205,22 @@ struct MessageRow<DataSource: ChatDataSource, Content: View>: View {
                     }
                     
                     if message.reactionType != nil {
-                        Text("✕")
-                            .font(.system(size: 24))
+                        Text(ChatConstants.Reactions.removeSymbol)
+                            .font(.system(size: ChatConstants.FontSizes.title))
                             .foregroundColor(.secondary)
                             .onTapGesture {
-                                withAnimation(.easeOut(duration: 0.2)) {
+                                withAnimation(.easeOut(duration: ChatConstants.Animation.reactionTransition)) {
                                     dataSource.onReaction("", to: message)
                                     selectedMessageForReaction = nil
                                 }
                             }
                     }
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
-                .background(
-                    RoundedRectangle(cornerRadius: 20)
-                        .fill(.ultraThinMaterial)
-                        .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 5)
-                )
-                .offset(y: -50) // Position above the message
-                .transition(.scale.combined(with: .opacity))
+                .reactionOverlay()
             }
         }
         .onLongPressGesture {
-            withAnimation(.easeOut(duration: 0.2)) {
+            withAnimation(.easeOut(duration: ChatConstants.Animation.reactionTransition)) {
                 if selectedMessageForReaction?.id == message.id {
                     selectedMessageForReaction = nil
                 } else {
@@ -217,7 +232,7 @@ struct MessageRow<DataSource: ChatDataSource, Content: View>: View {
             if message.status == .failed {
                 dataSource.onRetryMessage(message)
             } else if selectedMessageForReaction != nil {
-                withAnimation(.easeOut(duration: 0.2)) {
+                withAnimation(.easeOut(duration: ChatConstants.Animation.reactionTransition)) {
                     selectedMessageForReaction = nil
                 }
             }

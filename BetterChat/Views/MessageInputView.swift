@@ -17,7 +17,7 @@ struct MessageInputView<AttachmentPreview: View>: View {
         text: Binding<String>,
         configuration: ChatConfiguration,
         attachments: [Any],
-        sendButtonIcon: Image = Image(systemName: "arrow.up.circle.fill"),
+        sendButtonIcon: Image = Image(systemName: ChatConstants.SystemNames.sendButton),
         attachmentActions: [AttachmentAction] = [],
         @ViewBuilder attachmentPreview: @escaping (Any) -> AttachmentPreview,
         onSend: @escaping () -> Void,
@@ -53,13 +53,13 @@ struct MessageInputView<AttachmentPreview: View>: View {
     private var attachmentsView: some View {
         if !attachments.isEmpty {
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
+                HStack(spacing: ChatConstants.Spacing.attachmentSpacing) {
                     ForEach(0..<attachments.count, id: \.self) { index in
                         attachmentItemView(index: index)
                     }
                 }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
+                .padding(.horizontal, ChatConstants.Spacing.bubblePadding)
+                .padding(.vertical, ChatConstants.Spacing.medium)
             }
         }
     }
@@ -67,35 +67,30 @@ struct MessageInputView<AttachmentPreview: View>: View {
     private func attachmentItemView(index: Int) -> some View {
         ZStack(alignment: .topTrailing) {
             attachmentPreview(attachments[index])
-                .frame(width: 60, height: 60)
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12)
-                        .stroke(Color.gray.opacity(0.3), lineWidth: 0.5)
-                )
+                .attachmentPreview()
             
             Button(action: { onRemoveAttachment(index) }) {
-                Image(systemName: "xmark.circle.fill")
-                    .font(.system(size: 20))
+                Image(systemName: ChatConstants.SystemNames.removeAttachment)
+                    .font(.system(size: ChatConstants.Sizes.removeButtonSize))
                     .foregroundColor(.white)
                     .background(
                         Circle()
-                            .fill(Color.black.opacity(0.7))
+                            .fill(Color.black.opacity(ChatConstants.Opacity.secondary))
                             .frame(width: 22, height: 22)
                     )
             }
-            .offset(x: 8, y: -8)
+            .offset(x: ChatConstants.Spacing.medium, y: -ChatConstants.Spacing.medium)
         }
     }
     
     private var inputAreaView: some View {
-        HStack(alignment: .bottom, spacing: 6) {
+        HStack(alignment: .bottom, spacing: ChatConstants.Spacing.small) {
             attachmentButton
             textInputContainer
         }
-        .padding(.vertical, 5)
-        .padding(.bottom, 3)
-        .animation(.easeInOut(duration: 0.2), value: text.isEmpty)
+        .padding(.vertical, ChatConstants.Spacing.small - 1)
+        .padding(.bottom, ChatConstants.Spacing.tiny + 1)
+        .animation(.easeInOut(duration: ChatConstants.Animation.sendButtonTransition), value: text.isEmpty)
     }
     
     private var attachmentButton: some View {
@@ -118,12 +113,12 @@ struct MessageInputView<AttachmentPreview: View>: View {
                 }
             }
         } label: {
-            Image(systemName: "plus")
-                .font(.system(size: 20, weight: .medium))
+            Image(systemName: ChatConstants.SystemNames.attachmentButton)
+                .font(.system(size: ChatConstants.Sizes.removeButtonSize, weight: .medium))
                 .foregroundColor(Color.gray)
-                .frame(width: 34, height: 34)
+                .frame(width: ChatConstants.Sizes.attachmentButtonSize, height: ChatConstants.Sizes.attachmentButtonSize)
         }
-        .padding(.leading, 6)
+        .padding(.leading, ChatConstants.Spacing.small)
     }
     
     private var textInputContainer: some View {
@@ -132,22 +127,17 @@ struct MessageInputView<AttachmentPreview: View>: View {
             sendButtonView
         }
         .background(textFieldBackground)
-        .padding(.trailing, 6)
+        .padding(.trailing, ChatConstants.Spacing.small)
     }
     
     private var textField: some View {
-        TextField("iMessage", text: $text, axis: .vertical)
-            .textFieldStyle(.plain)
-            .font(.system(size: 17))
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .lineLimit(1...6)
-            .frame(minHeight: 34)
+        TextField(ChatConstants.Placeholders.messageInput, text: $text, axis: .vertical)
+            .messageInput(configuration: configuration)
             .focused($isTextFieldFocused)
             .gesture(
                 DragGesture()
                     .onChanged { value in
-                        if value.translation.height > 20 {
+                        if value.translation.height > ChatConstants.Sizes.removeButtonSize {
                             isTextFieldFocused = false
                         }
                     }
@@ -158,21 +148,20 @@ struct MessageInputView<AttachmentPreview: View>: View {
     private var sendButtonView: some View {
         if !text.isEmpty {
             Button(action: onSend) {
-                Image(systemName: "arrow.up.circle.fill")
-                    .font(.system(size: 32))
-                    .foregroundColor(.blue)
+                sendButtonIcon
+                    .sendButton(isEnabled: !text.isEmpty)
             }
-            .padding(.trailing, 2)
+            .padding(.trailing, ChatConstants.Spacing.tiny)
             .padding(.bottom, 1)
             .transition(.scale.combined(with: .opacity))
         }
     }
     
     private var textFieldBackground: some View {
-        RoundedRectangle(cornerRadius: 17)
+        RoundedRectangle(cornerRadius: configuration.inputStyle.cornerRadius)
             .fill(Color(.systemGray6))
             .overlay(
-                RoundedRectangle(cornerRadius: 17)
+                RoundedRectangle(cornerRadius: configuration.inputStyle.cornerRadius)
                     .stroke(Color(.systemGray4), lineWidth: 0.5)
             )
     }
