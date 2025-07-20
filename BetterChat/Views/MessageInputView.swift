@@ -7,7 +7,7 @@ struct MessageInputView<AttachmentPreview: View>: View {
     let attachments: [Any]
     let attachmentPreview: (Any) -> AttachmentPreview
     let onSend: () -> Void
-    let onAttachment: () -> Void
+    let onAttachment: (Any) -> Void
     let onRemoveAttachment: (Int) -> Void
     
     private var sendButtonIcon: Image
@@ -21,7 +21,7 @@ struct MessageInputView<AttachmentPreview: View>: View {
         attachmentActions: [AttachmentAction] = [],
         @ViewBuilder attachmentPreview: @escaping (Any) -> AttachmentPreview,
         onSend: @escaping () -> Void,
-        onAttachment: @escaping () -> Void,
+        onAttachment: @escaping (Any) -> Void,
         onRemoveAttachment: @escaping (Int) -> Void
     ) {
         self._text = text
@@ -99,7 +99,25 @@ struct MessageInputView<AttachmentPreview: View>: View {
     }
     
     private var attachmentButton: some View {
-        Button(action: onAttachment) {
+        Menu {
+            ForEach(attachmentActions.indices, id: \.self) { index in
+                Button(action: {
+                    Task {
+                        if let item = await attachmentActions[index].action() {
+                            await MainActor.run {
+                                onAttachment(item)
+                            }
+                        }
+                    }
+                }) {
+                    Label {
+                        Text(attachmentActions[index].title)
+                    } icon: {
+                        attachmentActions[index].icon
+                    }
+                }
+            }
+        } label: {
             Image(systemName: "plus")
                 .font(.system(size: 20, weight: .medium))
                 .foregroundColor(Color.gray)

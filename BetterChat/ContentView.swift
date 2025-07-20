@@ -137,20 +137,6 @@ class ExampleChatDataSource: ObservableObject, ChatDataSource {
         }
     }
     
-    func reactionPicker(for message: ExampleMessage) -> some View {
-        HStack(spacing: 20) {
-            ForEach(["❤️", "👍", "😂", "😮", "😢", "🔥"], id: \.self) { emoji in
-                Text(emoji)
-                    .font(.largeTitle)
-                    .onTapGesture {
-                        self.onReaction(emoji, to: message)
-                        // Dismiss the sheet
-                        NotificationCenter.default.post(name: .dismissReactionPicker, object: nil)
-                    }
-            }
-        }
-        .padding()
-    }
     
     func onSendMessage(text: String, attachments: [Any]) {
         let newMessage = ExampleMessage(
@@ -196,7 +182,7 @@ class ExampleChatDataSource: ObservableObject, ChatDataSource {
     
     func onReaction(_ reaction: String, to message: ExampleMessage) {
         if let index = messages.firstIndex(where: { $0.id == message.id }) {
-            messages[index].reactionType = reaction
+            messages[index].reactionType = reaction.isEmpty ? nil : reaction
         }
     }
 }

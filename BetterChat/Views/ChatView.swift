@@ -5,9 +5,7 @@ public struct ChatView<DataSource: ChatDataSource>: View {
     @ObservedObject private var viewModel: ChatViewModel<DataSource>
     @State private var inputText = ""
     @State private var attachments: [Any] = []
-    @State private var selectedMessage: DataSource.Message?
-    @State private var showReactionPicker = false
-    @State private var showAttachmentMenu = false
+    @State private var selectedMessageForReaction: DataSource.Message?
     @FocusState private var isTextFieldFocused: Bool
     
     private let dataSource: DataSource
@@ -37,12 +35,6 @@ public struct ChatView<DataSource: ChatDataSource>: View {
             .navigationBarHidden(true)
         }
         .navigationViewStyle(StackNavigationViewStyle())
-        .sheet(isPresented: $showReactionPicker) {
-            reactionPickerSheet
-        }
-        .sheet(isPresented: $showAttachmentMenu) {
-            attachmentMenuSheet
-        }
     }
     
     private var messagesView: some View {
@@ -50,22 +42,14 @@ public struct ChatView<DataSource: ChatDataSource>: View {
             ScrollView {
                 LazyVStack(spacing: 0) {
                     ForEach(dataSource.messages) { message in
-                        ChatBubbleView(
+                        MessageRow(
                             message: message,
                             configuration: configuration,
                             content: dataSource.messageContent(for: message),
-                            showReaction: true
+                            dataSource: dataSource,
+                            selectedMessageForReaction: $selectedMessageForReaction
                         )
                         .id(message.id)
-                        .onLongPressGesture {
-                            selectedMessage = message
-                            showReactionPicker = true
-                        }
-                        .onTapGesture {
-                            if message.status == .failed {
-                                dataSource.onRetryMessage(message)
-                            }
-                        }
                     }
                 }
                 .padding(.bottom, 90)
@@ -104,8 +88,8 @@ public struct ChatView<DataSource: ChatDataSource>: View {
                 inputText = ""
                 attachments = []
             },
-            onAttachment: {
-                showAttachmentMenu = true
+            onAttachment: { attachment in
+                attachments.append(attachment)
             },
             onRemoveAttachment: { index in
                 attachments.remove(at: index)
@@ -114,39 +98,81 @@ public struct ChatView<DataSource: ChatDataSource>: View {
         .background(Color.white)
     }
     
-    @ViewBuilder
-    private var reactionPickerSheet: some View {
-        if let message = selectedMessage {
-            VStack {
-                Text("Select Reaction")
-                    .font(.headline)
-                    .padding()
-                
-                dataSource.reactionPicker(for: message)
-                    .onReceive(NotificationCenter.default.publisher(for: .dismissReactionPicker)) { _ in
-                        showReactionPicker = false
-                    }
-                
-                Button("Cancel") {
-                    showReactionPicker = false
-                }
-                .padding()
-            }
-            .presentationDetents([.height(200)])
-        }
-    }
+}
+
+struct MessageRow<DataSource: ChatDataSource, Content: View>: View {
+    let message: DataSource.Message
+    let configuration: ChatConfiguration
+    let content: Content
+    let dataSource: DataSource
+    @Binding var selectedMessageForReaction: DataSource.Message?
     
-    private var attachmentMenuSheet: some View {
-        AttachmentMenuView(
-            actions: attachmentActions,
-            onSelection: { attachment in
-                if let attachment = attachment {
-                    attachments.append(attachment)
+    var body: some View {
+        VStack(spacing: 0) {
+            // Reaction picker if this message is selected
+            if selectedMessageForReaction?.id == message.id {
+                HStack(spacing: 8) {
+                    ForEach(["❤️", "👍", "😂", "😮", "😢", "🔥"], id: \.self) { emoji in
+                        Text(emoji)
+                            .font(.system(size: 30))
+                            .onTapGesture {
+                                withAnimation(.easeOut(duration: 0.2)) {
+                                    dataSource.onReaction(emoji, to: message)
+                                    selectedMessageForReaction = nil
+                                }
+                            }
+                    }
+                    
+                    if message.reactionType != nil {
+                        Text("✕")
+                            .font(.system(size: 24))
+                            .foregroundColor(.secondary)
+                            .onTapGesture {
+                                withAnimation(.easeOut(duration: 0.2)) {
+                                    dataSource.onReaction("", to: message)
+                                    selectedMessageForReaction = nil
+                                }
+                            }
+                    }
                 }
-                showAttachmentMenu = false
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .background(
+                    RoundedRectangle(cornerRadius: 20)
+                        .fill(.ultraThinMaterial)
+                        .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 5)
+                )
+                .padding(.horizontal, 20)
+                .padding(.bottom, 8)
+                .transition(.scale.combined(with: .opacity))
             }
-        )
-        .presentationDetents([.height(CGFloat(80 * attachmentActions.count + 100))])
+            
+            // Message bubble
+            ChatBubbleView(
+                message: message,
+                configuration: configuration,
+                content: content,
+                showReaction: true
+            )
+            .onLongPressGesture {
+                withAnimation(.easeOut(duration: 0.2)) {
+                    if selectedMessageForReaction?.id == message.id {
+                        selectedMessageForReaction = nil
+                    } else {
+                        selectedMessageForReaction = message
+                    }
+                }
+            }
+            .onTapGesture {
+                if message.status == .failed {
+                    dataSource.onRetryMessage(message)
+                } else if selectedMessageForReaction != nil {
+                    withAnimation(.easeOut(duration: 0.2)) {
+                        selectedMessageForReaction = nil
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -172,50 +198,3 @@ class ChatViewModel<DataSource: ChatDataSource>: ObservableObject {
     }
 }
 
-struct AttachmentMenuView: View {
-    let actions: [AttachmentAction]
-    let onSelection: (AttachmentItem?) -> Void
-    
-    var body: some View {
-        VStack(spacing: 0) {
-            Text("Add Attachment")
-                .font(.headline)
-                .padding()
-            
-            Divider()
-            
-            ScrollView {
-                VStack(spacing: 0) {
-                    ForEach(actions.indices, id: \.self) { index in
-                        Button(action: {
-                            Task {
-                                let item = await actions[index].action()
-                                await MainActor.run {
-                                    onSelection(item)
-                                }
-                            }
-                        }) {
-                            HStack {
-                                actions[index].icon
-                                    .font(.system(size: 24))
-                                    .frame(width: 40)
-                                
-                                Text(actions[index].title)
-                                    .font(.body)
-                                
-                                Spacer()
-                            }
-                            .padding()
-                        }
-                        .foregroundColor(.primary)
-                        
-                        if index < actions.count - 1 {
-                            Divider()
-                                .padding(.leading, 60)
-                        }
-                    }
-                }
-            }
-        }
-    }
-}

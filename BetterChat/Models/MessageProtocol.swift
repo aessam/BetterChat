@@ -25,7 +25,6 @@ public protocol ChatDataSource {
     associatedtype Message: MessageProtocol
     associatedtype MessageContent: View
     associatedtype AttachmentPreview: View
-    associatedtype ReactionPicker: View
     
     var messages: [Message] { get }
     
@@ -34,9 +33,6 @@ public protocol ChatDataSource {
     
     @ViewBuilder
     func attachmentPreview(for attachment: Any) -> AttachmentPreview
-    
-    @ViewBuilder
-    func reactionPicker(for message: Message) -> ReactionPicker
     
     func onSendMessage(text: String, attachments: [Any])
     func onRetryMessage(_ message: Message)
