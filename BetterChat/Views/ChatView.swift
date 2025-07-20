@@ -52,7 +52,7 @@ public struct ChatView<DataSource: ChatDataSource>: View {
                         .zIndex(selectedMessageForReaction?.id == message.id ? 1 : 0)
                     }
                 }
-                .padding(.bottom, 90)
+                .padding(.bottom, 10)
                 .padding(.top, 10)
             }
             .background(configuration.generalStyle.backgroundColor)
@@ -62,14 +62,7 @@ public struct ChatView<DataSource: ChatDataSource>: View {
                 }
             }
         }
-        .gesture(
-            DragGesture()
-                .onChanged { value in
-                    if value.translation.height > 50 {
-                        NotificationCenter.default.post(name: .dismissKeyboard, object: nil)
-                    }
-                }
-        )
+        .scrollDismissesKeyboard(.interactively)
     }
     
     private var inputView: some View {

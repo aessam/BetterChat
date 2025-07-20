@@ -144,6 +144,14 @@ struct MessageInputView<AttachmentPreview: View>: View {
             .lineLimit(1...6)
             .frame(minHeight: 34)
             .focused($isTextFieldFocused)
+            .gesture(
+                DragGesture()
+                    .onChanged { value in
+                        if value.translation.height > 20 {
+                            isTextFieldFocused = false
+                        }
+                    }
+            )
     }
     
     @ViewBuilder
