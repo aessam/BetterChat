@@ -1,6 +1,30 @@
 import SwiftUI
 import Combine
 
+// Wrapper for heterogeneous items in the chat
+enum ChatItemWrapper<Message: MessageProtocol>: Identifiable {
+    case message(Message)
+    case thinkingSession(ThinkingSession)
+    
+    var id: String {
+        switch self {
+        case .message(let message):
+            return message.id
+        case .thinkingSession(let session):
+            return session.id
+        }
+    }
+    
+    var timestamp: Date {
+        switch self {
+        case .message(let message):
+            return message.timestamp
+        case .thinkingSession(let session):
+            return session.timestamp
+        }
+    }
+}
+
 public struct ChatView<DataSource: ChatDataSource>: View {
     @ObservedObject private var viewModel: ChatViewModel<DataSource>
     @State private var inputText = ""
@@ -41,6 +65,16 @@ public struct ChatView<DataSource: ChatDataSource>: View {
             ScrollView {
                 LazyVStack(spacing: 0) {
                     ForEach(dataSource.messages) { message in
+                        // Show completed thinking sessions that belong to this message
+                        ForEach(dataSource.completedThinkingSessions.filter { $0.timestamp < message.timestamp && isNearestToMessage($0, message: message) }) { session in
+                            ThinkingIndicatorView(
+                                thoughts: session.thoughts,
+                                configuration: configuration,
+                                isThinking: false
+                            )
+                            .id(session.id)
+                        }
+                        
                         MessageRow(
                             message: message,
                             configuration: configuration,
@@ -50,6 +84,22 @@ public struct ChatView<DataSource: ChatDataSource>: View {
                         )
                         .id(message.id)
                         .zIndex(selectedMessageForReaction?.id == message.id ? 1 : 0)
+                    }
+                    
+                    // Show active thinking indicator
+                    if dataSource.isThinking {
+                        ThinkingIndicatorView(
+                            thoughts: dataSource.thinkingThoughts,
+                            configuration: configuration,
+                            isThinking: true
+                        )
+                        .id("active-thinking-indicator")
+                    }
+                    
+                    // Show typing indicator
+                    if dataSource.isTyping {
+                        TypingIndicatorView(configuration: configuration)
+                            .id("typing-indicator")
                     }
                 }
                 .padding(.bottom, 10)
@@ -89,6 +139,15 @@ public struct ChatView<DataSource: ChatDataSource>: View {
             }
         )
         .background(Color(.systemBackground))
+    }
+    
+    private func isNearestToMessage(_ session: ThinkingSession, message: DataSource.Message) -> Bool {
+        // Find the next message after this thinking session
+        let nextMessage = dataSource.messages
+            .filter { $0.timestamp > session.timestamp }
+            .min { $0.timestamp < $1.timestamp }
+        
+        return nextMessage?.id == message.id
     }
     
 }

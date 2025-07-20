@@ -10,6 +10,7 @@ struct ExampleMessage: MessageProtocol {
     var reactionType: String?
     let text: String
     let attachments: [ExampleAttachment]
+    let associatedThoughts: [ThinkingThought]? // Add this to link thoughts to messages
 }
 
 struct ExampleAttachment: AttachmentItem, Identifiable {
@@ -34,7 +35,8 @@ class ExampleChatDataSource: ObservableObject, ChatDataSource {
             status: .read,
             reactionType: "😊",
             text: "Hey! How's the new chat module coming along?",
-            attachments: []
+            attachments: [],
+            associatedThoughts: nil
         ),
         ExampleMessage(
             id: "2",
@@ -43,7 +45,8 @@ class ExampleChatDataSource: ObservableObject, ChatDataSource {
             status: .read,
             reactionType: "❤️",
             text: "It's going great! The modular design is really flexible.",
-            attachments: []
+            attachments: [],
+            associatedThoughts: nil
         ),
         ExampleMessage(
             id: "3",
@@ -52,7 +55,8 @@ class ExampleChatDataSource: ObservableObject, ChatDataSource {
             status: .read,
             reactionType: nil,
             text: "Can you share a screenshot?",
-            attachments: []
+            attachments: [],
+            associatedThoughts: nil
         ),
         ExampleMessage(
             id: "4",
@@ -67,9 +71,16 @@ class ExampleChatDataSource: ObservableObject, ChatDataSource {
                     displayName: "screenshot.png",
                     type: .image(Image(systemName: "photo.fill"))
                 )
-            ]
+            ],
+            associatedThoughts: nil
         )
     ]
+    
+    @Published var isTyping: Bool = false
+    @Published var isThinking: Bool = false  
+    @Published var thinkingThoughts: [ThinkingThought] = []
+    @Published var completedThinkingSessions: [ThinkingSession] = []
+    
     
     func messageContent(for message: ExampleMessage) -> some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -146,7 +157,8 @@ class ExampleChatDataSource: ObservableObject, ChatDataSource {
             status: .sending,
             reactionType: nil,
             text: text,
-            attachments: attachments.compactMap { $0 as? ExampleAttachment }
+            attachments: attachments.compactMap { $0 as? ExampleAttachment },
+            associatedThoughts: nil
         )
         
         messages.append(newMessage)
@@ -163,6 +175,9 @@ class ExampleChatDataSource: ObservableObject, ChatDataSource {
                 self.messages[index].status = .delivered
             }
         }
+        
+        // Simulate automatic response
+        simulateResponse(to: text)
     }
     
     func onRetryMessage(_ message: ExampleMessage) {
@@ -185,6 +200,172 @@ class ExampleChatDataSource: ObservableObject, ChatDataSource {
             messages[index].reactionType = reaction.isEmpty ? nil : reaction
         }
     }
+    
+    // Demo functions for typing and thinking indicators
+    func simulateTyping() {
+        isTyping = true
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+            self.isTyping = false
+            self.messages.append(ExampleMessage(
+                id: UUID().uuidString,
+                timestamp: Date(),
+                sender: .otherUser,
+                status: .read,
+                reactionType: nil,
+                text: "This message was preceded by a typing indicator!",
+                attachments: [],
+                associatedThoughts: nil
+            ))
+        }
+    }
+    
+    func simulateThinking() {
+        isThinking = true
+        thinkingThoughts = []
+        let sessionStartTime = Date()
+        
+        // Add thoughts progressively
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+            self.thinkingThoughts.append(ThinkingThought(
+                content: "Let me analyze the user's question about implementing chat features..."
+            ))
+        }
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+            self.thinkingThoughts.append(ThinkingThought(
+                content: "I should consider the existing architecture and how to best integrate these new components."
+            ))
+        }
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
+            self.thinkingThoughts.append(ThinkingThought(
+                content: "The typing indicator should be simple with animated dots, and the thinking indicator should be collapsible to show the reasoning process."
+            ))
+        }
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 7) {
+            // Save the thinking session to history
+            let completedSession = ThinkingSession(
+                timestamp: sessionStartTime,
+                thoughts: self.thinkingThoughts,
+                isActive: false,
+                sender: .otherUser
+            )
+            self.completedThinkingSessions.append(completedSession)
+            
+            // Clear active thinking
+            self.isThinking = false
+            self.thinkingThoughts = []
+            
+            // Send the message (from other user to simulate AI response)
+            self.messages.append(ExampleMessage(
+                id: UUID().uuidString,
+                timestamp: Date(),
+                sender: .otherUser,
+                status: .read,
+                reactionType: nil,
+                text: "After thinking through the implementation, I believe we should use DisclosureGroup for the collapsible thinking indicator and a simple dot animation for typing.",
+                attachments: [],
+                associatedThoughts: nil
+            ))
+        }
+    }
+    
+    func simulateResponse(to userMessage: String) {
+        // ALWAYS show thinking for user messages
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+            self.simulateThinkingResponse(to: userMessage)
+        }
+    }
+    
+    func simulateThinkingResponse(to userMessage: String) {
+        isThinking = true
+        thinkingThoughts = []
+        let sessionStartTime = Date()
+        
+        // Add thoughts progressively
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+            self.thinkingThoughts.append(ThinkingThought(
+                content: "Analyzing the user's message: '\(String(userMessage.prefix(30)))...'"
+            ))
+        }
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+            self.thinkingThoughts.append(ThinkingThought(
+                content: "Considering context and formulating an appropriate response..."
+            ))
+        }
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 4) {
+            // Save the thinking session to history
+            let completedSession = ThinkingSession(
+                timestamp: sessionStartTime,
+                thoughts: self.thinkingThoughts,
+                isActive: false,
+                sender: .otherUser
+            )
+            self.completedThinkingSessions.append(completedSession)
+            
+            // Clear active thinking and start typing
+            self.isThinking = false
+            self.thinkingThoughts = []
+            self.isTyping = true
+            
+            // After typing, add the response message
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                self.isTyping = false
+                let response = self.generateThoughtfulResponse(to: userMessage)
+                self.messages.append(ExampleMessage(
+                    id: UUID().uuidString,
+                    timestamp: Date(),
+                    sender: .otherUser,
+                    status: .read,
+                    reactionType: nil,
+                    text: response,
+                    attachments: [],
+                    associatedThoughts: nil
+                ))
+            }
+        }
+    }
+    
+    func generateResponse(to message: String) -> String {
+        let responses = [
+            "That's interesting! Tell me more about that.",
+            "I see what you mean. Have you considered another perspective?",
+            "Thanks for sharing that with me!",
+            "That makes sense. What do you think about it?",
+            "I appreciate your thoughts on this.",
+            "Absolutely! I couldn't agree more.",
+            "That's a great point you're making."
+        ]
+        return responses.randomElement() ?? "Thanks for your message!"
+    }
+    
+    func generateQuickResponse(to message: String) -> String {
+        let responses = [
+            "Got it! 👍",
+            "Sounds good!",
+            "Sure thing!",
+            "Makes sense.",
+            "I understand.",
+            "Noted!",
+            "Perfect!"
+        ]
+        return responses.randomElement() ?? "Okay!"
+    }
+    
+    func generateThoughtfulResponse(to message: String) -> String {
+        let responses = [
+            "After considering what you've said, I think this is a really valuable perspective. It shows great insight into the topic.",
+            "I've been thinking about your message, and it raises some interesting points that deserve further discussion.",
+            "Your message touches on something important. I believe we should explore this idea more deeply.",
+            "This is a thoughtful observation. It reminds me of similar discussions about innovation and progress.",
+            "I appreciate you bringing this up. It's a complex topic that requires careful consideration."
+        ]
+        return responses.randomElement() ?? "That's a thought-provoking message. Let me share my perspective on this."
+    }
 }
 
 // Main View
@@ -192,57 +373,77 @@ struct ContentView: View {
     @StateObject private var dataSource = ExampleChatDataSource()
     
     var body: some View {
-        BetterChat.chatView(
-            dataSource: dataSource,
-            configuration: ChatConfiguration(
-                bubbleStyle: BubbleStyle(
-                    currentUserColor: .blue,
-                    otherUserColor: Color(.systemGray5),
-                    textColor: .primary,
-                    font: .body,
-                    cornerRadius: 18
+        NavigationView {
+            BetterChat.chatView(
+                dataSource: dataSource,
+                configuration: ChatConfiguration(
+                    bubbleStyle: BubbleStyle(
+                        currentUserColor: .blue,
+                        otherUserColor: Color(.systemGray5),
+                        textColor: .primary,
+                        font: .body,
+                        cornerRadius: 18
+                    ),
+                    inputStyle: InputStyle(),
+                    generalStyle: GeneralStyle(
+                        showTimestamps: false
+                    )
                 ),
-                inputStyle: InputStyle(),
-                generalStyle: GeneralStyle(
-                    showTimestamps: false
-                )
-            ),
-            sendButtonIcon: Image(systemName: "arrow.up.circle.fill"),
-            attachmentActions: [
-                AttachmentAction(
-                    title: "Photo Library",
-                    icon: Image(systemName: "photo"),
-                    action: {
-                        // Simulate photo picker
-                        return ExampleAttachment(
-                            id: UUID().uuidString,
-                            displayName: "photo.jpg",
-                            type: .image(Image(systemName: "photo.fill"))
-                        )
-                    }
-                ),
-                AttachmentAction(
-                    title: "Document",
-                    icon: Image(systemName: "doc"),
-                    action: {
-                        // Simulate document picker
-                        return ExampleAttachment(
-                            id: UUID().uuidString,
-                            displayName: "document.pdf",
-                            type: .document(URL(string: "file://document.pdf")!)
-                        )
-                    }
-                ),
-                AttachmentAction(
-                    title: "Location",
-                    icon: Image(systemName: "location"),
-                    action: {
-                        // Simulate location sharing
-                        return nil
-                    }
-                )
-            ]
-        )
+                sendButtonIcon: Image(systemName: "arrow.up.circle.fill"),
+                attachmentActions: [
+                    AttachmentAction(
+                        title: "Photo Library",
+                        icon: Image(systemName: "photo"),
+                        action: {
+                            // Simulate photo picker
+                            return ExampleAttachment(
+                                id: UUID().uuidString,
+                                displayName: "photo.jpg",
+                                type: .image(Image(systemName: "photo.fill"))
+                            )
+                        }
+                    ),
+                    AttachmentAction(
+                        title: "Document",
+                        icon: Image(systemName: "doc"),
+                        action: {
+                            // Simulate document picker
+                            return ExampleAttachment(
+                                id: UUID().uuidString,
+                                displayName: "document.pdf",
+                                type: .document(URL(string: "file://document.pdf")!)
+                            )
+                        }
+                    ),
+                    AttachmentAction(
+                        title: "Location",
+                        icon: Image(systemName: "location"),
+                        action: {
+                            // Simulate location sharing
+                            return nil
+                        }
+                    ),
+                    AttachmentAction(
+                        title: "Simulate Typing",
+                        icon: Image(systemName: "ellipsis.message"),
+                        action: {
+                            dataSource.simulateTyping()
+                            return nil
+                        }
+                    ),
+                    AttachmentAction(
+                        title: "Simulate Thinking",
+                        icon: Image(systemName: "brain"),
+                        action: {
+                            dataSource.simulateThinking()
+                            return nil
+                        }
+                    )
+                ]
+            )
+            .navigationTitle("BetterChat Demo")
+            .navigationBarTitleDisplayMode(.inline)
+        }
     }
 }
 
