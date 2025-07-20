@@ -6,7 +6,6 @@ public struct ChatView<DataSource: ChatDataSource>: View {
     @State private var inputText = ""
     @State private var attachments: [Any] = []
     @State private var selectedMessageForReaction: DataSource.Message?
-    @FocusState private var isTextFieldFocused: Bool
     
     private let dataSource: DataSource
     private let configuration: ChatConfiguration
@@ -177,16 +176,9 @@ struct MessageRow<DataSource: ChatDataSource, Content: View>: View {
 class ChatViewModel<DataSource: ChatDataSource>: ObservableObject {
     let scrollPublisher = PassthroughSubject<String, Never>()
     private let dataSource: DataSource
-    private var cancellables = Set<AnyCancellable>()
     
     init(dataSource: DataSource) {
         self.dataSource = dataSource
-        observeMessages()
-    }
-    
-    private func observeMessages() {
-        // This would be implemented based on how the data source updates
-        // For now, we'll assume manual triggering
     }
     
     func scrollToBottom() {
