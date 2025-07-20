@@ -50,6 +50,7 @@ public struct ChatView<DataSource: ChatDataSource>: View {
                             selectedMessageForReaction: $selectedMessageForReaction
                         )
                         .id(message.id)
+                        .zIndex(selectedMessageForReaction?.id == message.id ? 1 : 0)
                     }
                 }
                 .padding(.bottom, 90)
@@ -108,8 +109,14 @@ struct MessageRow<DataSource: ChatDataSource, Content: View>: View {
     @Binding var selectedMessageForReaction: DataSource.Message?
     
     var body: some View {
-        VStack(spacing: 0) {
-            // Reaction picker if this message is selected
+        ChatBubbleView(
+            message: message,
+            configuration: configuration,
+            content: content,
+            showReaction: true
+        )
+        .overlay(alignment: .top) {
+            // Reaction picker overlay
             if selectedMessageForReaction?.id == message.id {
                 HStack(spacing: 8) {
                     ForEach(["❤️", "👍", "😂", "😮", "😢", "🔥"], id: \.self) { emoji in
@@ -142,34 +149,25 @@ struct MessageRow<DataSource: ChatDataSource, Content: View>: View {
                         .fill(.ultraThinMaterial)
                         .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 5)
                 )
-                .padding(.horizontal, 20)
-                .padding(.bottom, 8)
+                .offset(y: -50) // Position above the message
                 .transition(.scale.combined(with: .opacity))
             }
-            
-            // Message bubble
-            ChatBubbleView(
-                message: message,
-                configuration: configuration,
-                content: content,
-                showReaction: true
-            )
-            .onLongPressGesture {
-                withAnimation(.easeOut(duration: 0.2)) {
-                    if selectedMessageForReaction?.id == message.id {
-                        selectedMessageForReaction = nil
-                    } else {
-                        selectedMessageForReaction = message
-                    }
+        }
+        .onLongPressGesture {
+            withAnimation(.easeOut(duration: 0.2)) {
+                if selectedMessageForReaction?.id == message.id {
+                    selectedMessageForReaction = nil
+                } else {
+                    selectedMessageForReaction = message
                 }
             }
-            .onTapGesture {
-                if message.status == .failed {
-                    dataSource.onRetryMessage(message)
-                } else if selectedMessageForReaction != nil {
-                    withAnimation(.easeOut(duration: 0.2)) {
-                        selectedMessageForReaction = nil
-                    }
+        }
+        .onTapGesture {
+            if message.status == .failed {
+                dataSource.onRetryMessage(message)
+            } else if selectedMessageForReaction != nil {
+                withAnimation(.easeOut(duration: 0.2)) {
+                    selectedMessageForReaction = nil
                 }
             }
         }
