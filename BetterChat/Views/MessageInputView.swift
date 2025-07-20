@@ -162,15 +162,15 @@ struct MessageInputView<AttachmentPreview: View>: View {
     
     private var textFieldBackground: some View {
         RoundedRectangle(cornerRadius: 17)
-            .fill(Color.gray.opacity(0.1))
+            .fill(Color(.systemGray6))
             .overlay(
                 RoundedRectangle(cornerRadius: 17)
-                    .stroke(Color.gray.opacity(0.2), lineWidth: 0.5)
+                    .stroke(Color(.systemGray4), lineWidth: 0.5)
             )
     }
     
     private var backgroundView: some View {
-        Color.white
+        Color(.systemBackground)
             .overlay(
                 VStack {
                     Divider()

@@ -95,7 +95,7 @@ public struct ChatView<DataSource: ChatDataSource>: View {
                 attachments.remove(at: index)
             }
         )
-        .background(Color.white)
+        .background(Color(.systemBackground))
     }
     
 }
