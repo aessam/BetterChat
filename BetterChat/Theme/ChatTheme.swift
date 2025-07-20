@@ -59,10 +59,17 @@ public struct ChatColors {
     
     public static let `default` = ChatColors()
     
+    public static let light = ChatColors(
+        primary: .orange,
+        accent: .orange
+    )
+    
     public static let dark = ChatColors(
-        primary: .blue,
-        secondary: Color(.secondarySystemBackground),
-        accent: .blue
+        primary: .purple,
+        secondary: Color(.systemGray5),
+        background: Color(.systemGray6),
+        surface: Color(.systemGray4),
+        accent: .purple
     )
     
     public static let minimal = ChatColors(
@@ -127,7 +134,7 @@ extension EnvironmentValues {
 
 // MARK: - Theme Presets
 public extension ChatDesignTokens {
-    static let light = ChatDesignTokens(colors: .default)
+    static let light = ChatDesignTokens(colors: .light)
     
     static let dark = ChatDesignTokens(colors: .dark)
     

@@ -71,7 +71,7 @@ public struct ThinkingIndicatorView: View {
                     label: {
                         HStack {
                             Image(systemName: "brain")
-                                .foregroundColor(.blue)
+                                .foregroundColor(theme.colors.accent)
                                 .font(.caption)
                             
                             Text("Thinking Process")
@@ -91,6 +91,7 @@ public struct ThinkingIndicatorView: View {
                         }
                     }
                 )
+                .accentColor(theme.colors.accent)
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 10)
@@ -139,7 +140,7 @@ public struct ThinkingIndicatorView: View {
         HStack(spacing: 2) {
             ForEach(0..<3, id: \.self) { index in
                 Circle()
-                    .fill(Color.blue)
+                    .fill(theme.colors.accent)
                     .frame(width: 3, height: 3)
                     .scaleEffect(scale(for: index))
                     .opacity(opacity(for: index))

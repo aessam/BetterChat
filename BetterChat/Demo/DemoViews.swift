@@ -3,12 +3,13 @@ import SwiftUI
 // MARK: - Demo Views
 public struct ModernChatDemoView: View {
     @StateObject private var dataSource = DemoDataSource()
+    @State private var selectedTheme: ChatThemePreset = .blue
     
     public var body: some View {
         NavigationView {
             VStack(spacing: 0) {
                 // Theme selector
-                themePicker
+                themePicker.padding(2)
                 
                 // Chat view with beautiful new API
                 ModernChatView(
@@ -52,7 +53,7 @@ public struct ModernChatDemoView: View {
                         )
                     ]
                 )
-                    .chatTheme(ChatThemePreset.blue)  // Beautiful, simple theming!
+                    .chatTheme(selectedTheme)  // Apply selected theme!
                     .safeAreaAware()
             }
             .navigationTitle("Modern Chat")
@@ -63,15 +64,15 @@ public struct ModernChatDemoView: View {
     private var themePicker: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 12) {
-                ThemeButton(title: "Light", theme: .light)
-                ThemeButton(title: "Dark", theme: .dark)
-                ThemeButton(title: "Blue", theme: .blue)
-                ThemeButton(title: "Green", theme: .green)
-                ThemeButton(title: "Minimal", theme: .minimal)
+                ThemeButton(title: "Light", theme: .light, selectedTheme: $selectedTheme)
+                ThemeButton(title: "Dark", theme: .dark, selectedTheme: $selectedTheme)
+                ThemeButton(title: "Blue", theme: .blue, selectedTheme: $selectedTheme)
+                ThemeButton(title: "Green", theme: .green, selectedTheme: $selectedTheme)
+                ThemeButton(title: "Minimal", theme: .minimal, selectedTheme: $selectedTheme)
             }
             .padding(.horizontal)
         }
-        .padding(.vertical, 8)
+        .padding(8)
         .background(Color(.systemGray6))
     }
 }
@@ -79,17 +80,62 @@ public struct ModernChatDemoView: View {
 struct ThemeButton: View {
     let title: String
     let theme: ChatThemePreset
+    @Binding var selectedTheme: ChatThemePreset
     
     var body: some View {
         Button(title) {
-            // In a real app, you'd update the theme here
+            withAnimation(.easeInOut(duration: 0.2)) {
+                selectedTheme = theme
+            }
         }
         .font(.caption)
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
-        .background(Color.blue.opacity(0.1))
-        .foregroundColor(.blue)
+        .background(backgroundColor)
+        .foregroundColor(textColor)
         .clipShape(Capsule())
+        .overlay(
+            Capsule()
+                .stroke(borderColor, lineWidth: isSelected ? 2 : 1)
+        )
+    }
+    
+    private var isSelected: Bool {
+        selectedTheme == theme
+    }
+    
+    private var backgroundColor: Color {
+        if isSelected {
+            return themeColor.opacity(0.2)
+        } else {
+            return Color(.systemGray6)
+        }
+    }
+    
+    private var textColor: Color {
+        if isSelected {
+            return themeColor
+        } else {
+            return .secondary
+        }
+    }
+    
+    private var borderColor: Color {
+        if isSelected {
+            return themeColor
+        } else {
+            return Color(.systemGray4)
+        }
+    }
+    
+    private var themeColor: Color {
+        switch theme {
+        case .light: return .orange
+        case .dark: return .purple
+        case .blue: return .blue
+        case .green: return .green
+        case .minimal: return .gray
+        }
     }
 }
 
