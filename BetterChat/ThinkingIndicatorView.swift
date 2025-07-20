@@ -1,20 +1,19 @@
 import SwiftUI
 
-struct ThinkingIndicatorView: View {
+public struct ThinkingIndicatorView: View {
     let thoughts: [ThinkingThought]
-    let configuration: ChatConfiguration
     let isThinking: Bool
+    @Environment(\.chatTheme) private var theme
     
     @State private var isExpanded = true
     @State private var animationPhase = 0.0
     
-    init(thoughts: [ThinkingThought], configuration: ChatConfiguration, isThinking: Bool) {
+    public init(thoughts: [ThinkingThought], isThinking: Bool) {
         self.thoughts = thoughts
-        self.configuration = configuration
         self.isThinking = isThinking
     }
     
-    var body: some View {
+    public var body: some View {
         HStack(alignment: .top, spacing: 0) {
             // Avatar space to align with other user messages
             Circle()
@@ -96,10 +95,10 @@ struct ThinkingIndicatorView: View {
             .padding(.horizontal, 12)
             .padding(.vertical, 10)
             .background(
-                RoundedRectangle(cornerRadius: configuration.bubbleStyle.cornerRadius)
+                RoundedRectangle(cornerRadius: theme.layout.cornerRadius)
                     .fill(Color(.systemGray6))
                     .overlay(
-                        RoundedRectangle(cornerRadius: configuration.bubbleStyle.cornerRadius)
+                        RoundedRectangle(cornerRadius: theme.layout.cornerRadius)
                             .stroke(Color(.systemGray4), lineWidth: 0.5)
                     )
             )
