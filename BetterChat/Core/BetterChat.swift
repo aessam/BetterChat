@@ -39,13 +39,3 @@ public struct BetterChat {
         .chatTheme(customTheme)
     }
 }
-
-// MARK: - Backward Compatibility (Deprecated)
-@available(*, deprecated, message: "Use the new chatView methods with ChatThemePreset instead")
-extension BetterChat {
-    public static func legacyChatView<DataSource: ChatDataSource>(
-        dataSource: DataSource
-    ) -> some View {
-        chatView(dataSource: dataSource, theme: .light)
-    }
-}

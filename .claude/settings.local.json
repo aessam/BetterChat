@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(xcodebuild:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(mv:*)"
     ],
     "deny": []
   }

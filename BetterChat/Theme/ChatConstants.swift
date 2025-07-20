@@ -114,7 +114,7 @@ public struct ChatConstants {
     
     // MARK: - Default Reactions
     public struct Reactions {
-        public static let defaultEmojis = ["❤️", "👍", "😂", "😮", "😢", "🔥"]
+        public static let defaultEmojis = ["👍", "👎"]
         public static let removeSymbol = "✕"
     }
     
