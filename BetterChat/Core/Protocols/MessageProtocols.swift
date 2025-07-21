@@ -37,7 +37,3 @@ public protocol ReactableMessage: ChatMessage {
     var reactions: [Reaction] { get }
 }
 
-public protocol ThinkingMessage: ChatMessage {
-    var thoughts: [ThinkingThought] { get }
-    var isComplete: Bool { get }
-}

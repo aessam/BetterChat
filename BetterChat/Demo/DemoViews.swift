@@ -71,9 +71,9 @@ public struct ModernChatDemoView: View {
                 ThemeButton(title: "Minimal", theme: .minimal, selectedTheme: $selectedTheme)
             }
             .padding(.horizontal)
+            .padding(.vertical, 2)
         }
-        .padding(8)
-        .background(Color(.systemGray6))
+        .background(Color(.clear))
     }
 }
 
@@ -139,79 +139,3 @@ struct ThemeButton: View {
     }
 }
 
-// MARK: - Standalone Component Demos
-public struct ChatComponentsDemo: View {
-    public var body: some View {
-        ScrollView {
-            VStack(spacing: 20) {
-                // Message bubble examples
-                Group {
-                    Text("User message example")
-                        .userBubble()
-                    
-                    Text("Assistant message with a longer text that demonstrates the responsive bubble width system")
-                        .assistantBubble()
-                    
-                    Text("System message")
-                        .systemBubble()
-                }
-                
-                // Input examples
-                Group {
-                    Text("Standard input style")
-                        .chatInput()
-                    
-                    Text("Minimal input style")
-                        .chatInput(variant: .minimal)
-                    
-                    Text("Floating input style")
-                        .chatInput(variant: .floating)
-                }
-                
-                // Interactive examples
-                Group {
-                    Text("Send button")
-                        .sendButton()
-                    
-                    Text("Attachment button")
-                        .attachmentButton()
-                    
-                    Text("Reaction button")
-                        .reactionButton()
-                }
-                
-                // Chainable API examples
-                Group {
-                    Text("Chainable theming example")
-                        .chatBubble(role: .user)
-                        .chatTheme(ChatThemePreset.green)
-                    
-                    Text("Complex chaining")
-                        .assistantBubble(shape: .minimal)
-                        .reactions(enabled: true)
-                }
-            }
-            .padding()
-        }
-        .chatTheme(ChatThemePreset.blue)  // Apply theme to whole demo
-    }
-}
-
-// MARK: - Preview Helpers
-#Preview("Modern Chat Demo") {
-    ModernChatDemoView()
-}
-
-#Preview("Components Demo") {
-    ChatComponentsDemo()
-}
-
-#Preview("Minimal Theme") {
-    ModernChatDemoView()
-        .chatTheme(ChatThemePreset.minimal)
-}
-
-#Preview("Dark Theme") {
-    ModernChatDemoView()
-        .chatTheme(ChatThemePreset.dark)
-}

@@ -60,7 +60,4 @@ public extension View {
         chatInteractive(isEnabled: isEnabled, variant: .secondary)
     }
     
-    func reactionButton(isPressed: Bool = false) -> some View {
-        chatInteractive(isPressed: isPressed, variant: .secondary)
-    }
 }

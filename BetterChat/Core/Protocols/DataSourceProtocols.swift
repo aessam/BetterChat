@@ -24,14 +24,6 @@ public protocol ChatActionHandler {
     func removeReaction(from message: Message, reaction: String)
 }
 
-// Protocol for managing chat state
-public protocol ChatStateProvider: ObservableObject {
-    var scrollPosition: ChatScrollPosition { get }
-    var isScrolledToBottom: Bool { get }
-    
-    func scrollToBottom()
-    func scrollToMessage(id: String)
-}
 
 // MARK: - Combined Data Source for Convenience
 public protocol ChatDataSource: ChatDataProvider, ChatActionHandler, ObservableObject where Message == Self.Message, Attachment == Self.Attachment {

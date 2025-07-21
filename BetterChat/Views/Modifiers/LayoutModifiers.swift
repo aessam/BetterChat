@@ -1,29 +1,5 @@
 import SwiftUI
 
-// MARK: - Chat Container Style
-public struct ChatContainerStyle: ViewModifier {
-    @Environment(\.chatTheme) private var theme
-    
-    let variant: ContainerVariant
-    
-    public func body(content: Content) -> some View {
-        content
-            .background(backgroundColor)
-            .scrollDismissesKeyboard(.interactively)
-    }
-    
-    private var backgroundColor: Color {
-        switch variant {
-        case .standard: return theme.colors.background
-        case .elevated: return theme.colors.surface
-        }
-    }
-}
-
-public enum ContainerVariant {
-    case standard
-    case elevated
-}
 
 // MARK: - Reaction Container
 public struct ChatReactionView<Content: View>: View {
@@ -125,11 +101,6 @@ struct TypingIndicatorDots: View {
 
 // MARK: - View Extensions
 public extension View {
-    // MARK: - Container Styling
-    func chatContainer(variant: ContainerVariant = .standard) -> some View {
-        modifier(ChatContainerStyle(variant: variant))
-    }
-    
     // Reaction support
     func reactions(enabled: Bool = true) -> ChatReactionView<Self> {
         ChatReactionView(content: self, isEnabled: enabled)
