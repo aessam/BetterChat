@@ -1,13 +1,62 @@
 import SwiftUI
 
-// MARK: - Design Tokens
+/// A comprehensive design system for BetterChat theming.
+///
+/// `ChatDesignTokens` provides a complete set of design tokens that control
+/// the visual appearance of the chat interface. It includes colors, spacing,
+/// typography, layout parameters, and animation settings.
+///
+/// ## Usage
+///
+/// Create a custom theme:
+/// ```swift
+/// let customTheme = ChatDesignTokens(
+///     colors: ChatColors(
+///         primary: .purple,
+///         accent: .purple
+///     ),
+///     spacing: ChatSpacing(md: 16, lg: 20)
+/// )
+/// 
+/// // Apply to chat view
+/// ModernChatView(dataSource: dataSource)
+///     .chatTheme(customTheme)
+/// ```
+///
+/// Use built-in presets:
+/// ```swift
+/// ModernChatView(dataSource: dataSource)
+///     .chatTheme(.dark)    // Purple theme
+///     .chatTheme(.green)   // Green theme
+///     .chatTheme(.minimal) // Gray theme
+/// ```
+///
+/// - Note: All design tokens have sensible defaults and can be partially customized.
+/// - Important: Changes to theme tokens are automatically reflected throughout the UI.
 public struct ChatDesignTokens {
+    /// Color scheme defining the visual appearance.
     public var colors: ChatColors
+    
+    /// Spacing values for consistent layout.
     public var spacing: ChatSpacing
+    
+    /// Typography settings for text rendering.
     public var typography: ChatTypography
+    
+    /// Layout parameters for component sizing.
     public var layout: ChatLayout
+    
+    /// Animation settings for smooth transitions.
     public var animation: ChatAnimation
     
+    /// Creates a new design token set with the specified values.
+    ///
+    /// - Parameters:
+    ///   - colors: Color scheme to use. Defaults to ``ChatColors/default``.
+    ///   - spacing: Spacing values. Defaults to ``ChatSpacing/default``.
+    ///   - typography: Typography settings. Defaults to ``ChatTypography/default``.
+    ///   - layout: Layout parameters. Defaults to ``ChatLayout/default``.
+    ///   - animation: Animation settings. Defaults to ``ChatAnimation/default``.
     public init(
         colors: ChatColors = .default,
         spacing: ChatSpacing = .default,

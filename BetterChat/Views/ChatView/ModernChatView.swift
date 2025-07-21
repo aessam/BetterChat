@@ -1,17 +1,65 @@
 import SwiftUI
 import Combine
 
-// MARK: - Modern Chat View
+/// A modern, customizable chat interface built with SwiftUI.
+///
+/// `ModernChatView` provides a complete chat experience with support for:
+/// - Text messaging with real-time updates
+/// - Rich attachments (images, documents, etc.)
+/// - Message reactions and interactions
+/// - Thinking processes for AI conversations
+/// - Comprehensive theming system
+///
+/// ## Usage
+///
+/// Basic implementation with a data source:
+///
+/// ```swift
+/// ModernChatView(dataSource: myDataSource)
+///     .chatTheme(.blue)
+/// ```
+///
+/// With attachment support:
+///
+/// ```swift
+/// ModernChatView(
+///     dataSource: myDataSource,
+///     attachmentActions: [
+///         AttachmentAction(
+///             title: "Photo",
+///             icon: Image(systemName: "photo"),
+///             action: { /* return attachment */ }
+///         )
+///     ]
+/// )
+/// ```
+///
+/// - Important: Your data source must conform to ``ChatDataSource`` protocol.
+/// - Note: The view automatically handles keyboard management and scroll behavior.
 public struct ModernChatView<DataSource: ChatDataSource>: View {
+    /// The data source that provides messages and handles chat operations.
     @ObservedObject private var dataSource: DataSource
+    
+    /// The current theme applied to the chat interface.
     @Environment(\.chatTheme) private var theme
     
+    /// The current input text being typed by the user.
     @State private var inputText = ""
+    
+    /// Currently selected attachments to be sent with the next message.
     @State private var selectedAttachments: [Any] = []
+    
+    /// The message currently selected for reaction (if any).
     @State private var selectedMessageForReaction: DataSource.Message?
     
+    /// Available attachment actions for the input area.
     private let attachmentActions: [AttachmentAction]
     
+    /// Creates a new chat view with the specified data source and attachment actions.
+    ///
+    /// - Parameters:
+    ///   - dataSource: The data source conforming to ``ChatDataSource`` that manages chat data.
+    ///   - attachmentActions: Optional array of ``AttachmentAction`` objects for handling attachments.
     public init(
         dataSource: DataSource,
         attachmentActions: [AttachmentAction] = []

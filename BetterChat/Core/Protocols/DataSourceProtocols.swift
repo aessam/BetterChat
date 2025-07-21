@@ -25,7 +25,41 @@ public protocol ChatActionHandler {
 }
 
 
-// MARK: - Combined Data Source for Convenience
+/// The main protocol for implementing chat data sources in BetterChat.
+///
+/// `ChatDataSource` combines data provision and action handling capabilities,
+/// providing everything needed to power a chat interface. Implementations
+/// should manage message storage, handle user interactions, and provide
+/// real-time updates through the `ObservableObject` protocol.
+///
+/// ## Implementation Example
+///
+/// ```swift
+/// class MyDataSource: ObservableObject, ChatDataSource {
+///     @Published var messages: [MyMessage] = []
+///     @Published var isTyping = false
+///     
+///     typealias Message = MyMessage
+///     typealias Attachment = ImageAttachment
+///     
+///     func sendMessage(_ content: String, attachments: [any ChatAttachment]) {
+///         // Handle sending logic
+///     }
+///     
+///     func reactToMessage(_ message: MyMessage, reaction: String) {
+///         // Handle reaction logic
+///     }
+///     
+///     func removeReaction(from message: MyMessage, reaction: String) {
+///         // Handle reaction removal
+///     }
+/// }
+/// ```
+///
+/// - Important: Implementations must be marked with `@MainActor` or ensure
+///   UI updates happen on the main queue.
+/// - Note: The protocol automatically inherits from `ObservableObject` for
+///   reactive UI updates.
 public protocol ChatDataSource: ChatDataProvider, ChatActionHandler, ObservableObject where Message == Self.Message, Attachment == Self.Attachment {
     // Combined protocol for simple use cases
 }
