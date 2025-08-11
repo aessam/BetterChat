@@ -104,8 +104,13 @@ struct SimplifiedInputArea<DataSource: ChatDataSource, AccessoryContent: View>: 
     var body: some View {
         HStack(alignment: .bottom, spacing: 6) {
             // Accessory slot (left side)
-            accessoryView()
-                .frame(minWidth: 0, maxWidth: 34, minHeight: 0, maxHeight: 34)
+            let accessory = accessoryView()
+            let hasAccessory = !(type(of: accessory) == EmptyView.self)
+            
+            if hasAccessory {
+                accessory
+                    .frame(width: 34, height: 34)
+            }
             
             // Text input
             HStack(alignment: .bottom) {
@@ -136,9 +141,9 @@ struct SimplifiedInputArea<DataSource: ChatDataSource, AccessoryContent: View>: 
                             .stroke(Color(.systemGray4), lineWidth: 0.5)
                     )
             )
-            .padding(.trailing, 6)
         }
-        .padding(.horizontal, 6)
+        .padding(.leading, 12)
+        .padding(.trailing, 12)
         .padding(.vertical, 5)
     }
     
