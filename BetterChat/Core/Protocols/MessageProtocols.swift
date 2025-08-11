@@ -54,18 +54,3 @@ public protocol ChatMessage: Identifiable {
     /// Current delivery status of the message.
     var status: MessageStatus { get }
 }
-
-// MARK: - Content Protocols
-public protocol TextMessage: ChatMessage {
-    var text: String { get }
-}
-
-public protocol MediaMessage: ChatMessage {
-    associatedtype Attachment: ChatAttachment
-    var attachments: [Attachment] { get }
-}
-
-public protocol ReactableMessage: ChatMessage {
-    var reactions: [Reaction] { get }
-}
-

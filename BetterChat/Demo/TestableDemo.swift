@@ -3,6 +3,21 @@ import Combine
 
 // MARK: - Testable Demo with Feature Toggles
 
+// MARK: - Content Protocols
+public protocol TextMessage: ChatMessage {
+    var text: String { get }
+}
+
+public protocol MediaMessage: ChatMessage {
+    associatedtype Attachment: ChatAttachment
+    var attachments: [Attachment] { get }
+}
+
+public protocol ReactableMessage: ChatMessage {
+    var reactions: [Reaction] { get }
+}
+
+
 // Custom message type for shelf display
 struct ShelfMessage: ChatMessage, ReactableMessage {
     let id = UUID().uuidString
@@ -480,8 +495,7 @@ struct TestableMessageRow: View {
                         }
                     }
                 
-                if let reactable = message as? any ReactableMessage,
-                   let reaction = reactable.reactions.first {
+                if let reaction = message.reactions.first {
                     // Only show the emoji, no counter
                     Text(reaction.emoji)
                         .font(.system(size: 16))
