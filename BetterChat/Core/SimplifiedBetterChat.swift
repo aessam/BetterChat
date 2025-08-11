@@ -105,7 +105,7 @@ struct SimplifiedInputArea<DataSource: ChatDataSource, AccessoryContent: View>: 
         HStack(alignment: .bottom, spacing: 6) {
             // Accessory slot (left side)
             accessoryView()
-                .frame(width: 34, height: 34)
+                .frame(minWidth: 0, maxWidth: 34, minHeight: 0, maxHeight: 34)
             
             // Text input
             HStack(alignment: .bottom) {

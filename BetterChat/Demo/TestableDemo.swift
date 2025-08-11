@@ -17,8 +17,9 @@ class TestableDataSource: ObservableObject, ChatDataSource {
     typealias Attachment = ImageAttachment
     
     @Published var messages: [TestableMessage] = [
-        TestableMessage(sender: .otherUser, text: "Test all features with the toggles above!", reactions: []),
-        TestableMessage(sender: .currentUser, text: "Double-tap messages for reactions", reactions: [])
+        TestableMessage(sender: .otherUser, text: "Hello! I'm Claude 🤖 Double-tap any message to react with stickers!", reactions: []),
+        TestableMessage(sender: .currentUser, text: "Cool! Show me what you can do", reactions: []),
+        TestableMessage(sender: .otherUser, text: "I can help you think through problems 🧠 or generate creative ideas ✨", reactions: [Reaction(emoji: "🎯", count: 1, isSelected: false)])
     ]
     @Published var isTyping = false
     @Published var isThinking = false
@@ -41,18 +42,13 @@ class TestableDataSource: ObservableObject, ChatDataSource {
     
     func reactToMessage(_ message: TestableMessage, reaction: String) {
         guard let i = messages.firstIndex(where: { $0.id == message.id }) else { return }
-        var reactions = messages[i].reactions
-        if let existingIndex = reactions.firstIndex(where: { $0.emoji == reaction }) {
-            reactions[existingIndex].count += 1
-        } else {
-            reactions.append(Reaction(emoji: reaction, count: 1, isSelected: true))
-        }
-        messages[i].reactions = reactions
+        // Only one reaction per message - replace any existing
+        messages[i].reactions = [Reaction(emoji: reaction, count: 1, isSelected: true)]
     }
     
     func removeReaction(from message: TestableMessage, reaction: String) {
         guard let i = messages.firstIndex(where: { $0.id == message.id }) else { return }
-        messages[i].reactions.removeAll { $0.emoji == reaction }
+        messages[i].reactions.removeAll()
     }
 }
 
@@ -111,7 +107,7 @@ struct TestableDemoView: View {
     private var chatView: some View {
         TestableBetterChatView(
             dataSource: dataSource,
-            reactions: enableReactions ? ["👍", "👎", "❤️", "😂"] : [],
+            reactions: enableReactions ? ["🤖", "🧠", "✨", "🎯", "💭", "🔮"] : [],
             enableDoubleTapReactions: enableReactions,
             accessoryView: {
                 if showAttachButton {
@@ -125,8 +121,6 @@ struct TestableDemoView: View {
                             .foregroundColor(.blue)
                             .font(.title2)
                     }
-                } else {
-                    Color.clear.frame(width: 34, height: 34)
                 }
             },
             inputAccessoryView: {
@@ -138,11 +132,24 @@ struct TestableDemoView: View {
                         
                         HStack(spacing: 15) {
                             Button(action: {
-                                dataSource.sendMessage(text: "Quick: Hello! 👋", attachments: [])
-                                currentMessage = "Sent: Hello!"
+                                dataSource.sendMessage(text: "Let's think step by step 🧠", attachments: [])
+                                currentMessage = "Sent: Think mode!"
                                 resetMessage()
                             }) {
-                                Text("👋 Hello")
+                                Text("🧠 Think")
+                                    .font(.caption)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 4)
+                                    .background(Color.purple.opacity(0.2))
+                                    .cornerRadius(10)
+                            }
+                            
+                            Button(action: {
+                                dataSource.sendMessage(text: "Can you help me with this? 🤖", attachments: [])
+                                currentMessage = "Sent: Help request!"
+                                resetMessage()
+                            }) {
+                                Text("🤖 Help")
                                     .font(.caption)
                                     .padding(.horizontal, 12)
                                     .padding(.vertical, 4)
@@ -151,24 +158,11 @@ struct TestableDemoView: View {
                             }
                             
                             Button(action: {
-                                dataSource.sendMessage(text: "Quick: Thanks!", attachments: [])
-                                currentMessage = "Sent: Thanks!"
+                                dataSource.sendMessage(text: "That's brilliant! ✨", attachments: [])
+                                currentMessage = "Sent: Brilliant!"
                                 resetMessage()
                             }) {
-                                Text("🙏 Thanks")
-                                    .font(.caption)
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 4)
-                                    .background(Color.green.opacity(0.2))
-                                    .cornerRadius(10)
-                            }
-                            
-                            Button(action: {
-                                dataSource.sendMessage(text: "Quick: OK", attachments: [])
-                                currentMessage = "Sent: OK"
-                                resetMessage()
-                            }) {
-                                Text("✅ OK")
+                                Text("✨ Nice")
                                     .font(.caption)
                                     .padding(.horizontal, 12)
                                     .padding(.vertical, 4)
@@ -349,7 +343,7 @@ struct TestableMessageRow<DataSource: ChatDataSource>: View {
                     .chatBubble(role: message.sender == .currentUser ? .user : .assistant)
                     .onTapGesture(count: 2) {
                         if enableDoubleTap {
-                            withAnimation {
+                            withAnimation(.easeInOut(duration: 0.15)) {
                                 selectedMessageForReaction = selectedMessageForReaction?.id == message.id ? nil : message
                             }
                         }
@@ -361,16 +355,13 @@ struct TestableMessageRow<DataSource: ChatDataSource>: View {
                     }
                 
                 if let reactable = message as? any ReactableMessage,
-                   !reactable.reactions.isEmpty {
-                    HStack(spacing: 4) {
-                        ForEach(reactable.reactions, id: \.id) { reaction in
-                            Text("\(reaction.emoji) \(reaction.count)")
-                                .font(.caption)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 2)
-                                .background(Capsule().fill(Color.gray.opacity(0.2)))
-                        }
-                    }
+                   let reaction = reactable.reactions.first {
+                    // Only show the emoji, no counter
+                    Text(reaction.emoji)
+                        .font(.system(size: 16))
+                        .padding(4)
+                        .background(Circle().fill(Color.blue.opacity(0.1)))
+                        .transition(.scale.combined(with: .opacity))
                 }
             }
             
@@ -392,9 +383,13 @@ struct TestableMessageRow<DataSource: ChatDataSource>: View {
             ForEach(reactions, id: \.self) { emoji in
                 Text(emoji)
                     .font(.system(size: 24))
+                    .scaleEffect(1.0)
                     .onTapGesture {
-                        dataSource.reactToMessage(message, reaction: emoji)
-                        selectedMessageForReaction = nil
+                        // Instant feedback
+                        withAnimation(.easeOut(duration: 0.1)) {
+                            dataSource.reactToMessage(message, reaction: emoji)
+                            selectedMessageForReaction = nil
+                        }
                     }
             }
         }
@@ -405,7 +400,7 @@ struct TestableMessageRow<DataSource: ChatDataSource>: View {
                 .shadow(radius: 8)
         )
         .offset(y: -40)
-        .transition(.scale.combined(with: .opacity))
+        .transition(.scale(scale: 0.8).combined(with: .opacity))
         .zIndex(1)
     }
 }

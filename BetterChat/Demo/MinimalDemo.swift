@@ -137,4 +137,11 @@ struct MinimalDemoView: View {
 
 // MARK: - App Entry
 
-//==
+//@main
+//struct MinimalApp: App {
+//    var body: some Scene {
+//        WindowGroup {
+//            MinimalDemoView()
+//        }
+//    }
+//}
