@@ -8,6 +8,8 @@ public struct InputArea<DataSource: ChatDataSource>: View {
     @Binding private var selectedAttachments: [Any]
     @FocusState private var isTextFieldFocused: Bool
     
+    @State private var trimmedText: String = ""
+    
     private let attachmentActions: [AttachmentAction]
     
     public init(
@@ -36,7 +38,10 @@ public struct InputArea<DataSource: ChatDataSource>: View {
             }
             .padding(.vertical, 5)
             .padding(.bottom, 3)
-            .animation(.easeInOut(duration: 0.2), value: inputText.isEmpty)
+            .animation(.easeInOut(duration: 0.2), value: trimmedText.isEmpty)
+            .onChange(of: inputText) { _, newValue in
+                trimmedText = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
+            }
         }
         .fixedSize(horizontal: false, vertical: true)
         .background(
@@ -54,8 +59,8 @@ public struct InputArea<DataSource: ChatDataSource>: View {
     private var attachmentPreviewRow: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: theme.spacing.sm) {
-                ForEach(selectedAttachments.indices, id: \.self) { index in
-                    attachmentPreviewView(for: selectedAttachments[index])
+                ForEach(Array(selectedAttachments.enumerated()), id: \.offset) { index, attachment in
+                    attachmentPreviewView(for: attachment)
                         .overlay(alignment: .topTrailing) {
                             Button {
                                 selectedAttachments.remove(at: index)
@@ -76,20 +81,18 @@ public struct InputArea<DataSource: ChatDataSource>: View {
     // MARK: - Attachment Button
     private var attachmentButton: some View {
         Menu {
-            ForEach(attachmentActions.indices, id: \.self) { index in
+            ForEach(Array(attachmentActions.enumerated()), id: \.offset) { index, action in
                 Button(action: {
                     Task {
-                        if let item = await attachmentActions[index].action() {
-                            await MainActor.run {
-                                selectedAttachments.append(item)
-                            }
+                        if let item = await action.action() {
+                            selectedAttachments.append(item)
                         }
                     }
                 }) {
                     Label {
-                        Text(attachmentActions[index].title)
+                        Text(action.title)
                     } icon: {
-                        attachmentActions[index].icon
+                        action.icon
                     }
                 }
             }
@@ -125,7 +128,7 @@ public struct InputArea<DataSource: ChatDataSource>: View {
     
     @ViewBuilder
     private var sendButtonView: some View {
-        if !inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+        if !trimmedText.isEmpty {
             Button(action: sendMessage) {
                 Image(systemName: "arrow.up.circle.fill")
                     .font(.system(size: 32))
@@ -148,7 +151,7 @@ public struct InputArea<DataSource: ChatDataSource>: View {
     
     // MARK: - Helper Methods
     private var canSendMessage: Bool {
-        !inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !selectedAttachments.isEmpty
+        !trimmedText.isEmpty || !selectedAttachments.isEmpty
     }
     
     private func sendMessage() {

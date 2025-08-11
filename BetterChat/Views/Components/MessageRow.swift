@@ -1,11 +1,17 @@
 import SwiftUI
 
-public struct MessageRow<DataSource: ChatDataSource>: View {
+public struct MessageRow<DataSource: ChatDataSource>: View, Equatable {
     let message: DataSource.Message
     @ObservedObject private var dataSource: DataSource
     @Environment(\.chatTheme) private var theme
     
     @Binding private var selectedMessageForReaction: DataSource.Message?
+    
+    public static func == (lhs: MessageRow, rhs: MessageRow) -> Bool {
+        // Only rebuild when message ID changes or selection state changes
+        lhs.message.id == rhs.message.id &&
+        (lhs.selectedMessageForReaction?.id == lhs.message.id) == (rhs.selectedMessageForReaction?.id == rhs.message.id)
+    }
     
     public init(
         message: DataSource.Message,
@@ -70,7 +76,7 @@ public struct MessageRow<DataSource: ChatDataSource>: View {
     @ViewBuilder
     private var messageContent: some View {
         VStack(alignment: message.sender == .currentUser ? .trailing : .leading, spacing: theme.spacing.xs) {
-            // Message bubble
+            // Message bubble with user's reaction badge
             messageContentView
                 .chatBubble(
                     role: message.sender == .currentUser ? .user : .assistant
@@ -100,6 +106,7 @@ public struct MessageRow<DataSource: ChatDataSource>: View {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 100))], spacing: theme.spacing.sm) {
                     ForEach(mediaMessage.attachments, id: \.id) { attachment in
                         attachmentPreview(for: attachment)
+                            .id(attachment.id)
                     }
                 }
             }
@@ -206,7 +213,7 @@ public struct MessageRow<DataSource: ChatDataSource>: View {
     // MARK: - Reactions
     private func reactionRow(for reactions: [Reaction]) -> some View {
         HStack(spacing: theme.spacing.xs) {
-            ForEach(reactions) { reaction in
+            ForEach(reactions, id: \.id) { reaction in
                 HStack(spacing: 2) {
                     Text(reaction.emoji)
                         .font(.caption)

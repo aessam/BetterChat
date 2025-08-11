@@ -7,6 +7,13 @@ public struct ThinkingIndicatorView: View {
     
     @State private var isExpanded = true
     @State private var animationPhase = 0.0
+    @State private var collapseTask: Task<Void, Never>?
+    
+    private static let timeFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.timeStyle = .short
+        return formatter
+    }()
     
     public init(thoughts: [ThinkingThought], isThinking: Bool) {
         self.thoughts = thoughts
@@ -34,7 +41,7 @@ public struct ThinkingIndicatorView: View {
                                             .font(.caption2)
                                             .foregroundColor(.secondary)
                                         Spacer()
-                                        Text(timeFormatter.string(from: thought.timestamp))
+                                        Text(Self.timeFormatter.string(from: thought.timestamp))
                                             .font(.caption2)
                                             .foregroundColor(.secondary)
                                     }
@@ -114,22 +121,34 @@ public struct ThinkingIndicatorView: View {
             }
             // Auto-collapse when thinking is complete
             if !isThinking && thoughts.count > 0 {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                    withAnimation(.easeInOut(duration: 0.3)) {
-                        isExpanded = false
+                collapseTask?.cancel()
+                collapseTask = Task {
+                    try? await Task.sleep(nanoseconds: 500_000_000)
+                    if !Task.isCancelled {
+                        withAnimation(.easeInOut(duration: 0.3)) {
+                            isExpanded = false
+                        }
                     }
                 }
             }
         }
+        .onDisappear {
+            collapseTask?.cancel()
+        }
         .onChange(of: isThinking) { _, newValue in
             if newValue {
                 animationPhase = 1.0
+                collapseTask?.cancel()
             } else {
                 animationPhase = 0.0
                 // Auto-collapse when thinking stops
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                    withAnimation(.easeInOut(duration: 0.3)) {
-                        isExpanded = false
+                collapseTask?.cancel()
+                collapseTask = Task {
+                    try? await Task.sleep(nanoseconds: 500_000_000)
+                    if !Task.isCancelled {
+                        withAnimation(.easeInOut(duration: 0.3)) {
+                            isExpanded = false
+                        }
                     }
                 }
             }
@@ -171,9 +190,4 @@ public struct ThinkingIndicatorView: View {
         return "Thought"
     }
     
-    private var timeFormatter: DateFormatter {
-        let formatter = DateFormatter()
-        formatter.timeStyle = .short
-        return formatter
-    }
 }

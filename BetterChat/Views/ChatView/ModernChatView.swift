@@ -51,6 +51,8 @@ public struct ModernChatView<DataSource: ChatDataSource>: View {
     
     /// The message currently selected for reaction (if any).
     @State private var selectedMessageForReaction: DataSource.Message?
+    @State private var scrollTarget: String?
+    @State private var scrollTask: Task<Void, Never>?
     
     /// Available attachment actions for the input area.
     private let attachmentActions: [AttachmentAction]
@@ -90,12 +92,13 @@ public struct ModernChatView<DataSource: ChatDataSource>: View {
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(spacing: theme.spacing.sm) {
-                    ForEach(dataSource.messages) { message in
+                    ForEach(dataSource.messages, id: \.id) { message in
                         MessageRow(
                             message: message,
                             dataSource: dataSource,
                             selectedMessageForReaction: $selectedMessageForReaction
                         )
+                        .id(message.id)
                     }
                     
                     // Thinking indicator
@@ -113,11 +116,24 @@ public struct ModernChatView<DataSource: ChatDataSource>: View {
             }
             .scrollDismissesKeyboard(.interactively)
             .onChange(of: dataSource.messages.count) { oldValue, newValue in
+                guard newValue > oldValue else { return }
                 if let lastMessage = dataSource.messages.last {
-                    withAnimation(.easeInOut(duration: theme.animation.medium)) {
-                        proxy.scrollTo(lastMessage.id, anchor: .bottom)
+                    // Debounce scrolling to avoid excessive animations
+                    scrollTask?.cancel()
+                    scrollTask = Task {
+                        try? await Task.sleep(nanoseconds: 100_000_000) // 0.1s debounce
+                        if !Task.isCancelled {
+                            await MainActor.run {
+                                withAnimation(.easeInOut(duration: theme.animation.medium)) {
+                                    proxy.scrollTo(lastMessage.id, anchor: .bottom)
+                                }
+                            }
+                        }
                     }
                 }
+            }
+            .onDisappear {
+                scrollTask?.cancel()
             }
         }
     }
