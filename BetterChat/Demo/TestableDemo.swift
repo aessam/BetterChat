@@ -3,6 +3,16 @@ import Combine
 
 // MARK: - Testable Demo with Feature Toggles
 
+// Custom message type for shelf display
+struct ShelfMessage: ChatMessage, ReactableMessage {
+    let id = UUID().uuidString
+    let timestamp = Date()
+    let sender: MessageSender
+    var status = MessageStatus.sent
+    var reactions: [Reaction]
+    let shelves: [[String]] // Array of shelves, each containing items
+}
+
 struct TestableMessage: ChatMessage, TextMessage, ReactableMessage {
     let id = UUID().uuidString
     let timestamp = Date()
@@ -12,14 +22,19 @@ struct TestableMessage: ChatMessage, TextMessage, ReactableMessage {
     var reactions: [Reaction]
 }
 
-class TestableDataSource: ObservableObject, ChatDataSource {
-    typealias Message = TestableMessage
+// Protocol for any message type in our demo
+protocol DemoMessage: ChatMessage, ReactableMessage {}
+
+extension TestableMessage: DemoMessage {}
+extension ShelfMessage: DemoMessage {}
+
+class TestableDataSource: ObservableObject {
     typealias Attachment = ImageAttachment
     
-    @Published var messages: [TestableMessage] = [
+    @Published var messages: [any DemoMessage] = [
         TestableMessage(sender: .otherUser, text: "Hello! I'm Claude 🤖 Double-tap any message to react with stickers!", reactions: []),
         TestableMessage(sender: .currentUser, text: "Cool! Show me what you can do", reactions: []),
-        TestableMessage(sender: .otherUser, text: "I can help you think through problems 🧠 or generate creative ideas ✨", reactions: [Reaction(emoji: "🎯", count: 1, isSelected: false)])
+        TestableMessage(sender: .otherUser, text: "Send '📷' to see shelf layout example", reactions: [])
     ]
     @Published var isTyping = false
     @Published var isThinking = false
@@ -29,26 +44,61 @@ class TestableDataSource: ObservableObject, ChatDataSource {
     func sendMessage(text: String, attachments: [ImageAttachment]) {
         messages.append(TestableMessage(sender: .currentUser, text: text, reactions: []))
         
-        // Auto-reply
-        Task { @MainActor in
-            isTyping = true
-            try? await Task.sleep(nanoseconds: 1_000_000_000)
-            isTyping = false
-            messages.append(TestableMessage(sender: .otherUser, text: "Received: \(text)", reactions: []))
+        // Check if user sent camera/media emoji - respond with shelf message
+        if text.contains("📷") || text.contains("🖼") || text.contains("media") {
+            Task { @MainActor in
+                isTyping = true
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
+                isTyping = false
+                
+                // Send a shelf message with 3 horizontal scrollable shelves
+                let shelfMessage = ShelfMessage(
+                    sender: .otherUser,
+                    reactions: [],
+                    shelves: [
+                        ["🏞 Landscapes", "🌅 Sunsets", "🏔 Mountains", "🏖 Beaches"],
+                        ["🐕 Dogs", "🐈 Cats", "🦜 Birds", "🐠 Fish", "🦋 Butterflies"],
+                        ["🍕 Pizza", "🍔 Burgers", "🍣 Sushi", "🥗 Salads", "🍰 Desserts"]
+                    ]
+                )
+                messages.append(shelfMessage)
+            }
+        } else {
+            // Regular text reply
+            Task { @MainActor in
+                isTyping = true
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
+                isTyping = false
+                messages.append(TestableMessage(sender: .otherUser, text: "Received: \(text)", reactions: []))
+            }
         }
     }
     
-    func retryMessage(_ message: TestableMessage) {}
+    func retryMessage(_ message: any DemoMessage) {}
     
-    func reactToMessage(_ message: TestableMessage, reaction: String) {
+    func reactToMessage(_ message: any DemoMessage, reaction: String) {
         guard let i = messages.firstIndex(where: { $0.id == message.id }) else { return }
-        // Only one reaction per message - replace any existing
-        messages[i].reactions = [Reaction(emoji: reaction, count: 1, isSelected: true)]
+        
+        // Update reactions based on message type
+        if var textMsg = messages[i] as? TestableMessage {
+            textMsg.reactions = [Reaction(emoji: reaction, count: 1, isSelected: true)]
+            messages[i] = textMsg
+        } else if var shelfMsg = messages[i] as? ShelfMessage {
+            shelfMsg.reactions = [Reaction(emoji: reaction, count: 1, isSelected: true)]
+            messages[i] = shelfMsg
+        }
     }
     
-    func removeReaction(from message: TestableMessage, reaction: String) {
+    func removeReaction(from message: any DemoMessage, reaction: String) {
         guard let i = messages.firstIndex(where: { $0.id == message.id }) else { return }
-        messages[i].reactions.removeAll()
+        
+        if var textMsg = messages[i] as? TestableMessage {
+            textMsg.reactions.removeAll()
+            messages[i] = textMsg
+        } else if var shelfMsg = messages[i] as? ShelfMessage {
+            shelfMsg.reactions.removeAll()
+            messages[i] = shelfMsg
+        }
     }
 }
 
@@ -132,15 +182,15 @@ struct TestableDemoView: View {
                         
                         HStack(spacing: 15) {
                             Button(action: {
-                                dataSource.sendMessage(text: "Let's think step by step 🧠", attachments: [])
-                                currentMessage = "Sent: Think mode!"
+                                dataSource.sendMessage(text: "📷 Show me media", attachments: [])
+                                currentMessage = "Sent: Media request!"
                                 resetMessage()
                             }) {
-                                Text("🧠 Think")
+                                Text("📷 Media")
                                     .font(.caption)
                                     .padding(.horizontal, 12)
                                     .padding(.vertical, 4)
-                                    .background(Color.purple.opacity(0.2))
+                                    .background(Color.green.opacity(0.2))
                                     .cornerRadius(10)
                             }
                             
@@ -237,8 +287,8 @@ struct TestableDemoView: View {
 
 // MARK: - Custom Chat View with Double Tap
 
-struct TestableBetterChatView<DataSource: ChatDataSource, AccessoryContent: View, InputAccessoryContent: View, SuggestionContent: View>: View {
-    @ObservedObject private var dataSource: DataSource
+struct TestableBetterChatView<AccessoryContent: View, InputAccessoryContent: View, SuggestionContent: View>: View {
+    @ObservedObject private var dataSource: TestableDataSource
     @Environment(\.chatTheme) private var theme
     
     private let reactions: [String]
@@ -248,10 +298,10 @@ struct TestableBetterChatView<DataSource: ChatDataSource, AccessoryContent: View
     private let suggestionView: (String) -> SuggestionContent
     
     @State private var inputText = ""
-    @State private var selectedMessageForReaction: DataSource.Message?
+    @State private var selectedMessageForReaction: (any DemoMessage)?
     
     init(
-        dataSource: DataSource,
+        dataSource: TestableDataSource,
         reactions: [String] = ["👍", "👎"],
         enableDoubleTapReactions: Bool = true,
         @ViewBuilder accessoryView: @escaping () -> AccessoryContent = { EmptyView() },
@@ -310,25 +360,101 @@ struct TestableBetterChatView<DataSource: ChatDataSource, AccessoryContent: View
                 inputAccessoryView()
                     .frame(maxWidth: .infinity)
                 
-                SimplifiedInputArea(
-                    dataSource: dataSource,
-                    inputText: $inputText,
-                    accessoryView: accessoryView
-                )
+                HStack(alignment: .bottom, spacing: 6) {
+                    accessoryView()
+                        .frame(minWidth: 0, maxWidth: 34, minHeight: 0, maxHeight: 34)
+                    
+                    HStack(alignment: .bottom) {
+                        TextField("Message", text: $inputText, axis: .vertical)
+                            .textFieldStyle(.plain)
+                            .font(.system(size: 17))
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .lineLimit(1...5)
+                        
+                        if !inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            Button(action: {
+                                let text = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
+                                guard !text.isEmpty else { return }
+                                dataSource.sendMessage(text: text, attachments: [])
+                                inputText = ""
+                            }) {
+                                Image(systemName: "arrow.up.circle.fill")
+                                    .font(.system(size: 32))
+                                    .foregroundColor(.blue)
+                            }
+                            .padding(.trailing, 2)
+                            .padding(.bottom, 1)
+                        }
+                    }
+                    .background(
+                        RoundedRectangle(cornerRadius: 17)
+                            .fill(Color(.systemGray6))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 17)
+                                    .stroke(Color(.systemGray4), lineWidth: 0.5)
+                            )
+                    )
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 5)
             }
             .animation(.easeInOut(duration: 0.2), value: !inputText.isEmpty)
         }
     }
 }
 
+// MARK: - Shelf Message View
+
+struct ShelfMessageView: View {
+    let shelves: [[String]]
+    @Environment(\.chatTheme) private var theme
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            ForEach(Array(shelves.enumerated()), id: \.offset) { index, shelf in
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Shelf \(index + 1)")
+                        .font(.caption)
+                        .foregroundColor(theme.colors.textSecondary)
+                    
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 12) {
+                            ForEach(shelf, id: \.self) { item in
+                                VStack {
+                                    Text(String(item.prefix(2)))
+                                        .font(.title2)
+                                    Text(String(item.dropFirst(2)).trimmingCharacters(in: .whitespaces))
+                                        .font(.caption2)
+                                        .lineLimit(1)
+                                }
+                                .frame(width: 80, height: 80)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .fill(Color.blue.opacity(0.1))
+                                )
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .stroke(Color.blue.opacity(0.3), lineWidth: 1)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        .padding(12)
+    }
+}
+
 // MARK: - Message Row with Double Tap
 
-struct TestableMessageRow<DataSource: ChatDataSource>: View {
-    let message: DataSource.Message
-    @ObservedObject var dataSource: DataSource
+struct TestableMessageRow: View {
+    let message: any DemoMessage
+    let dataSource: TestableDataSource
     let reactions: [String]
     let enableDoubleTap: Bool
-    @Binding var selectedMessageForReaction: DataSource.Message?
+    @Binding var selectedMessageForReaction: (any DemoMessage)?
     
     @Environment(\.chatTheme) private var theme
     
@@ -373,8 +499,10 @@ struct TestableMessageRow<DataSource: ChatDataSource>: View {
     
     @ViewBuilder
     private var messageContent: some View {
-        if let textMessage = message as? any TextMessage {
+        if let textMessage = message as? TestableMessage {
             Text(textMessage.text)
+        } else if let shelfMessage = message as? ShelfMessage {
+            ShelfMessageView(shelves: shelfMessage.shelves)
         }
     }
     
