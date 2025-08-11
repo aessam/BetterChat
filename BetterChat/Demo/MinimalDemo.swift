@@ -54,69 +54,67 @@ class MinimalDataSource: ObservableObject, ChatDataSource {
 
 struct MinimalDemoView: View {
     @StateObject private var dataSource = MinimalDataSource()
-    @State private var showQuickReplies = false
-    @State private var currentMessage = "Tap buttons below to send messages"
+    @State private var currentMessage = "Tap buttons to send quick messages"
     
     var body: some View {
         BetterChat.chat(
             dataSource,
             reactions: ["👍", "👎"],
             accessory: {
-                Button(action: { showQuickReplies.toggle() }) {
-                    Image(systemName: showQuickReplies ? "keyboard.chevron.compact.down" : "keyboard")
-                        .foregroundColor(.blue)
-                }
+                Image(systemName: "plus.circle")
+                    .foregroundColor(.blue)
             },
             inputAccessory: {
-                if showQuickReplies {
-                    VStack(spacing: 0) {
-                        // Message display
-                        Text(currentMessage)
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 4)
-                        
-                        // Interactive buttons
-                        HStack(spacing: 20) {
-                            Button(action: {
-                                dataSource.sendMessage(text: "Hi! 👋", attachments: [])
-                                currentMessage = "Sent: Hi! 👋"
-                                withAnimation {
-                                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                                        currentMessage = "Ready to send another message"
-                                    }
+                // Persistent bar above input field
+                VStack(spacing: 4) {
+                    // Message display
+                    Text(currentMessage)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .frame(maxWidth: .infinity)
+                        .animation(.easeInOut, value: currentMessage)
+                    
+                    // Interactive buttons
+                    HStack(spacing: 20) {
+                        Button(action: {
+                            dataSource.sendMessage(text: "Hi! 👋", attachments: [])
+                            currentMessage = "Sent: Hi! 👋"
+                            withAnimation {
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                                    currentMessage = "Tap buttons to send quick messages"
                                 }
-                            }) {
-                                Label("Say Hi", systemImage: "hand.wave")
-                                    .font(.caption)
-                                    .padding(.horizontal, 16)
-                                    .padding(.vertical, 6)
-                                    .background(Color.green.opacity(0.2))
-                                    .cornerRadius(12)
                             }
-                            
-                            Button(action: {
-                                dataSource.sendMessage(text: "Bye! 👋", attachments: [])
-                                currentMessage = "Sent: Bye! 👋"
-                                withAnimation {
-                                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                                        currentMessage = "Ready to send another message"
-                                    }
-                                }
-                            }) {
-                                Label("Say Bye", systemImage: "hand.wave.fill")
-                                    .font(.caption)
-                                    .padding(.horizontal, 16)
-                                    .padding(.vertical, 6)
-                                    .background(Color.red.opacity(0.2))
-                                    .cornerRadius(12)
-                            }
+                        }) {
+                            Label("Say Hi", systemImage: "hand.wave")
+                                .font(.caption)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 6)
+                                .background(Color.green.opacity(0.2))
+                                .cornerRadius(12)
                         }
-                        .padding(.bottom, 8)
+                        
+                        Button(action: {
+                            dataSource.sendMessage(text: "Bye! 👋", attachments: [])
+                            currentMessage = "Sent: Bye! 👋"
+                            withAnimation {
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                                    currentMessage = "Tap buttons to send quick messages"
+                                }
+                            }
+                        }) {
+                            Label("Say Bye", systemImage: "hand.wave.fill")
+                                .font(.caption)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 6)
+                                .background(Color.red.opacity(0.2))
+                                .cornerRadius(12)
+                        }
                     }
-                    .frame(height: 60)
-                    .background(.thinMaterial)
+                }
+                .padding(.vertical, 8)
+                .background(Color(.secondarySystemBackground))
+                .overlay(alignment: .top) {
+                    Divider()
                 }
             },
             suggestions: { text in
@@ -139,11 +137,4 @@ struct MinimalDemoView: View {
 
 // MARK: - App Entry
 
-@main
-struct MinimalApp: App {
-    var body: some Scene {
-        WindowGroup {
-            MinimalDemoView()
-        }
-    }
-}
+//==

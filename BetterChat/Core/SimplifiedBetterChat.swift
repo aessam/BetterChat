@@ -42,20 +42,16 @@ public struct BetterChatView<DataSource: ChatDataSource, AccessoryContent: View,
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
                 
+                // Input accessory view (persistent bar above input field)
+                inputAccessoryView()
+                    .frame(maxWidth: .infinity)
+                
                 // Main input row
                 SimplifiedInputArea(
                     dataSource: dataSource,
                     inputText: $inputText,
                     accessoryView: accessoryView
                 )
-                
-                // Input accessory view (above keyboard)
-                if showInputAccessory {
-                    inputAccessoryView()
-                        .frame(maxWidth: .infinity)
-                        .background(.thinMaterial)
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
-                }
             }
             .animation(.easeInOut(duration: 0.2), value: showInputAccessory)
             .animation(.easeInOut(duration: 0.2), value: !inputText.isEmpty)
