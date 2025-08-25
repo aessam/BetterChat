@@ -4,7 +4,8 @@
       "Bash(xcodebuild:*)",
       "Bash(find:*)",
       "Bash(mv:*)",
-      "Bash(cloc:*)"
+      "Bash(cloc:*)",
+      "WebSearch"
     ],
     "deny": []
   }

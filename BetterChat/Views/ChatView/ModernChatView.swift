@@ -82,9 +82,13 @@ public struct ModernChatView<DataSource: ChatDataSource>: View {
                     attachmentActions: attachmentActions
                 )
             }
+            #if os(iOS)
             .navigationBarHidden(true)
+            #endif
         }
+        #if os(iOS)
         .navigationViewStyle(StackNavigationViewStyle())
+        #endif
     }
     
     // MARK: - Messages View

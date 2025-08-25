@@ -70,9 +70,13 @@ public struct PaginatedChatView<DataSource: ChatDataSource>: View {
                     attachmentActions: attachmentActions
                 )
             }
+            #if os(iOS)
             .navigationBarHidden(true)
+            #endif
         }
+        #if os(iOS)
         .navigationViewStyle(StackNavigationViewStyle())
+        #endif
         .onAppear {
             loadInitialMessages()
         }

@@ -1,5 +1,6 @@
 import SwiftUI
 import Combine
+import MultipeerConnectivity
 
 // MARK: - Testable Demo with Feature Toggles
 
@@ -43,6 +44,7 @@ protocol DemoMessage: ChatMessage, ReactableMessage {}
 extension TestableMessage: DemoMessage {}
 extension ShelfMessage: DemoMessage {}
 
+@MainActor
 class TestableDataSource: ObservableObject {
     typealias Attachment = ImageAttachment
     
@@ -56,8 +58,26 @@ class TestableDataSource: ObservableObject {
     @Published var currentThoughts: [ThinkingThought] = []
     @Published var completedThinkingSessions: [ThinkingSession] = []
     
+    // P2P Properties
+    @Published var discoveredPeers: [PeerInfo] = []
+    @Published var connectedPeers: [PeerInfo] = []
+    @Published var enabledPeers: Set<String> = [] // Peers enabled for chat
+    
+    private var p2pSession: P2PSession
+    private var cancellables = Set<AnyCancellable>()
+    
+    init() {
+        self.p2pSession = P2PSession(displayName: getDeviceName(), serviceType: "test")
+        Task {
+            await setupP2P()
+        }
+    }
+    
     func sendMessage(text: String, attachments: [ImageAttachment]) {
         messages.append(TestableMessage(sender: .currentUser, text: text, reactions: []))
+        
+        // Send to P2P peers if any are enabled
+        sendP2PMessage(text)
         
         // Check if user sent camera/media emoji - respond with shelf message
         if text.contains("📷") || text.contains("🖼") || text.contains("media") {
@@ -115,6 +135,101 @@ class TestableDataSource: ObservableObject {
             messages[i] = shelfMsg
         }
     }
+    
+    // MARK: - P2P Methods
+    
+    private func setupP2P() async {
+        p2pSession.delegate = self
+        p2pSession.startAdvertising()
+        p2pSession.startBrowsing()
+        
+        // Bind peer arrays
+        p2pSession.$discoveredPeers
+            .assign(to: \.discoveredPeers, on: self)
+            .store(in: &cancellables)
+            
+        p2pSession.$connectedPeers
+            .assign(to: \.connectedPeers, on: self)
+            .store(in: &cancellables)
+    }
+    
+    func togglePeer(_ peer: PeerInfo) {
+        if enabledPeers.contains(peer.peerID) {
+            enabledPeers.remove(peer.peerID)
+        } else {
+            enabledPeers.insert(peer.peerID)
+            // Connect to peer if not already connected
+            if !connectedPeers.contains(where: { $0.peerID == peer.peerID }) {
+                Task { @MainActor in
+                    p2pSession.invitePeer(peer)
+                }
+            }
+        }
+    }
+    
+    private func sendP2PMessage(_ text: String) {
+        // Send to enabled peers only
+        let enabledConnectedPeers = connectedPeers.filter { enabledPeers.contains($0.peerID) }
+        
+        if !enabledConnectedPeers.isEmpty {
+            Task { @MainActor in
+                do {
+                    // Create envelope directly with text payload
+                    let envelope = P2PEnvelope(
+                        sender: p2pSession.localPeerInfo,
+                        mimeType: P2PMimeType.text,
+                        payload: text.data(using: .utf8) ?? Data()
+                    )
+                    try p2pSession.broadcast(envelope: envelope)
+                } catch {
+                    print("Failed to send P2P message: \(error)")
+                }
+            }
+        }
+    }
+}
+
+// MARK: - P2PSessionDelegate
+extension TestableDataSource: P2PSessionDelegate {
+    func session(didReceive data: Data, from peer: PeerInfo) {
+        // Only process messages from enabled peers
+        guard enabledPeers.contains(peer.peerID) else { return }
+        
+        do {
+            let envelope = try JSONDecoder().decode(P2PEnvelope.self, from: data)
+            if envelope.mimeType == P2PMimeType.text {
+                // Decode text directly from payload
+                guard let text = String(data: envelope.payload, encoding: .utf8) else { return }
+                
+                DispatchQueue.main.async {
+                    let message = TestableMessage(
+                        sender: .otherUser,
+                        text: "[\(peer.displayName)]: \(text)",
+                        reactions: []
+                    )
+                    self.messages.append(message)
+                }
+            }
+        } catch {
+            print("Failed to process P2P message: \(error)")
+        }
+    }
+    
+    func session(peer: PeerInfo, didChangeState state: P2PConnectionState) {
+        // Connection state updates are handled via published properties
+    }
+    
+    func session(didEncounterError error: Error) {
+        print("P2P session error: \(error)")
+    }
+    
+    func session(didDiscover peer: PeerInfo) {
+        print("Discovered peer: \(peer.displayName)")
+    }
+    
+    func session(didLose peer: PeerInfo) {
+        print("Lost peer: \(peer.displayName)")
+    }
 }
 
 // MARK: - Testable Demo View
@@ -155,8 +270,70 @@ struct TestableDemoView: View {
                 Toggle("Mentions (@/#)", isOn: $showMentions)
                 Toggle("Reactions (double-tap)", isOn: $enableReactions)
             }
-            .font(.caption)
-            .toggleStyle(SwitchToggleStyle(tint: .blue))
+            
+            // P2P Peer Controls
+            if !dataSource.discoveredPeers.isEmpty || !dataSource.connectedPeers.isEmpty {
+                VStack(spacing: 8) {
+                    Text("Peer-to-Peer Chat")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                    
+                    // Available Peers
+                    ForEach(dataSource.discoveredPeers, id: \.peerID) { peer in
+                        HStack {
+                            Image(systemName: "person.circle")
+                                .foregroundColor(.blue)
+                            
+                            VStack(alignment: .leading) {
+                                Text(peer.displayName)
+                                    .font(.caption)
+                                if let deviceInfo = peer.deviceInfo {
+                                    Text(deviceInfo)
+                                        .font(.caption2)
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                            
+                            Spacer()
+                            
+                            Toggle("", isOn: Binding(
+                                get: { dataSource.enabledPeers.contains(peer.peerID) },
+                                set: { _ in dataSource.togglePeer(peer) }
+                            ))
+                            .labelsHidden()
+                        }
+                    }
+                    
+                    // Connected Peers
+                    ForEach(dataSource.connectedPeers.filter { connectedPeer in
+                        !dataSource.discoveredPeers.contains { $0.peerID == connectedPeer.peerID }
+                    }, id: \.peerID) { peer in
+                        HStack {
+                            Image(systemName: "person.circle.fill")
+                                .foregroundColor(.green)
+                            
+                            VStack(alignment: .leading) {
+                                Text(peer.displayName)
+                                    .font(.caption)
+                                if let deviceInfo = peer.deviceInfo {
+                                    Text(deviceInfo)
+                                        .font(.caption2)
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                            
+                            Spacer()
+                            
+                            Toggle("", isOn: Binding(
+                                get: { dataSource.enabledPeers.contains(peer.peerID) },
+                                set: { _ in dataSource.togglePeer(peer) }
+                            ))
+                            .labelsHidden()
+                        }
+                    }
+                }
+                .padding(.top, 8)
+            }
             
             if !attachmentTapped.isEmpty {
                 Text(attachmentTapped)
@@ -165,8 +342,10 @@ struct TestableDemoView: View {
                     .animation(.easeInOut, value: attachmentTapped)
             }
         }
+        .font(.caption)
+        .toggleStyle(SwitchToggleStyle(tint: .blue))
         .padding()
-        .background(Color(.systemGroupedBackground))
+        .background(UnifiedColors.secondaryBackground)
     }
     
     private var chatView: some View {
@@ -238,7 +417,7 @@ struct TestableDemoView: View {
                     }
                     .padding(.vertical, 6)
                     .frame(maxWidth: .infinity)
-                    .background(Color(.secondarySystemBackground))
+                    .background(UnifiedColors.secondaryBackground)
                     .overlay(alignment: .top) { Divider() }
                 }
             },
@@ -261,7 +440,7 @@ struct TestableDemoView: View {
                                 Divider()
                             }
                         }
-                        .background(Color(.systemBackground))
+                        .background(UnifiedColors.background)
                         .cornerRadius(8)
                         .shadow(radius: 2)
                         .padding(.horizontal)
@@ -282,7 +461,7 @@ struct TestableDemoView: View {
                                 Divider()
                             }
                         }
-                        .background(Color(.systemBackground))
+                        .background(UnifiedColors.background)
                         .cornerRadius(8)
                         .shadow(radius: 2)
                         .padding(.horizontal)
@@ -404,10 +583,10 @@ struct TestableBetterChatView<AccessoryContent: View, InputAccessoryContent: Vie
                     }
                     .background(
                         RoundedRectangle(cornerRadius: 17)
-                            .fill(Color(.systemGray6))
+                            .fill(UnifiedColors.systemGray6)
                             .overlay(
                                 RoundedRectangle(cornerRadius: 17)
-                                    .stroke(Color(.systemGray4), lineWidth: 0.5)
+                                    .stroke(UnifiedColors.systemGray4, lineWidth: 0.5)
                             )
                     )
                 }

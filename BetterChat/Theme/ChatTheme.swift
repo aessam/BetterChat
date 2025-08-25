@@ -86,9 +86,9 @@ public struct ChatColors {
     
     public init(
         primary: Color = .blue,
-        secondary: Color = Color(.secondarySystemBackground),
-        background: Color = Color(.systemBackground),
-        surface: Color = Color(.tertiarySystemBackground),
+        secondary: Color = UnifiedColors.secondaryBackground,
+        background: Color = UnifiedColors.background,
+        surface: Color = UnifiedColors.tertiaryBackground,
         text: Color = .primary,
         textSecondary: Color = .secondary,
         accent: Color = .blue,
@@ -115,15 +115,15 @@ public struct ChatColors {
     
     public static let dark = ChatColors(
         primary: .purple,
-        secondary: Color(.systemGray5),
-        background: Color(.systemGray6),
-        surface: Color(.systemGray4),
+        secondary: UnifiedColors.systemGray5,
+        background: UnifiedColors.systemGray6,
+        surface: UnifiedColors.systemGray4,
         accent: .purple
     )
     
     public static let minimal = ChatColors(
-        primary: Color(.systemGray),
-        accent: Color(.systemGray)
+        primary: UnifiedColors.systemGray,
+        accent: UnifiedColors.systemGray
     )
 }
 
