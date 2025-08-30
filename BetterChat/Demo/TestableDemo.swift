@@ -246,17 +246,233 @@ struct TestableDemoView: View {
     // UI State
     @State private var attachmentTapped = ""
     @State private var currentMessage = "Quick actions bar"
+    @State private var showControls = false
+    @State private var viewSize: CGSize = .zero
+    
+    private var isCompact: Bool {
+        viewSize.width < 600 || viewSize.height < 400
+    }
+    
+    private var isLandscape: Bool {
+        viewSize.width > viewSize.height
+    }
     
     var body: some View {
         VStack(spacing: 0) {
-            // Control Panel
-            controlPanel
-            
-            Divider()
+            // Compact control bar for landscape/small screens
+            if isCompact || isLandscape {
+                compactControlBar
+            } else {
+                // Full control panel for portrait/large screens
+                controlPanel
+                Divider()
+            }
             
             // Chat View
             chatView
         }
+        .background(
+            GeometryReader { proxy in
+                Color.clear
+                    .onAppear {
+                        viewSize = proxy.size
+                    }
+                    .onChange(of: proxy.size) { _, newSize in
+                        viewSize = newSize
+                    }
+            }
+        )
+        .overlay(alignment: .topTrailing) {
+            if showControls && (isCompact || isLandscape) {
+                expandedControlPanel
+            }
+        }
+    }
+    
+    private var compactControlBar: some View {
+        HStack(spacing: 12) {
+            // Settings toggle button
+            Button(action: { withAnimation(.easeInOut(duration: 0.2)) { showControls.toggle() } }) {
+                Image(systemName: showControls ? "xmark.circle.fill" : "gearshape.fill")
+                    .font(.title3)
+                    .foregroundColor(.blue)
+            }
+            .buttonStyle(.plain)
+            
+            Divider()
+                .frame(height: 20)
+            
+            // Quick toggle buttons with icons
+            HStack(spacing: 8) {
+                // Attachment toggle
+                Button(action: { showAttachButton.toggle() }) {
+                    Image(systemName: "paperclip.circle.fill")
+                        .font(.title3)
+                        .foregroundColor(showAttachButton ? .blue : .gray)
+                }
+                .buttonStyle(.plain)
+                .help("Toggle Attachment Button")
+                
+                // Input accessory toggle
+                Button(action: { showInputAccessory.toggle() }) {
+                    Image(systemName: "keyboard.badge.ellipsis")
+                        .font(.title3)
+                        .foregroundColor(showInputAccessory ? .blue : .gray)
+                }
+                .buttonStyle(.plain)
+                .help("Toggle Input Accessory")
+                
+                // Mentions toggle
+                Button(action: { showMentions.toggle() }) {
+                    Image(systemName: "at.circle.fill")
+                        .font(.title3)
+                        .foregroundColor(showMentions ? .blue : .gray)
+                }
+                .buttonStyle(.plain)
+                .help("Toggle Mentions")
+                
+                // Reactions toggle
+                Button(action: { enableReactions.toggle() }) {
+                    Image(systemName: "face.smiling.fill")
+                        .font(.title3)
+                        .foregroundColor(enableReactions ? .blue : .gray)
+                }
+                .buttonStyle(.plain)
+                .help("Toggle Reactions")
+            }
+            
+            if !dataSource.connectedPeers.isEmpty || !dataSource.discoveredPeers.isEmpty {
+                Divider()
+                    .frame(height: 20)
+                
+                // P2P indicator with count
+                HStack(spacing: 4) {
+                    Image(systemName: "network")
+                        .font(.caption)
+                    Text("\(dataSource.connectedPeers.count)/\(dataSource.discoveredPeers.count)")
+                        .font(.caption)
+                }
+                .foregroundColor(.green)
+            }
+            
+            Spacer()
+            
+            if !attachmentTapped.isEmpty {
+                Text(attachmentTapped)
+                    .font(.caption)
+                    .foregroundColor(.orange)
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(UnifiedColors.secondaryBackground)
+    }
+    
+    private var expandedControlPanel: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Settings")
+                    .font(.headline)
+                Spacer()
+                Button(action: { withAnimation(.easeInOut(duration: 0.2)) { showControls = false } }) {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundColor(.gray)
+                }
+                .buttonStyle(.plain)
+            }
+            
+            Divider()
+            
+            // Feature toggles in compact form
+            VStack(alignment: .leading, spacing: 8) {
+                Label("Attachment", systemImage: "paperclip")
+                    .foregroundColor(showAttachButton ? .primary : .secondary)
+                    .onTapGesture { showAttachButton.toggle() }
+                
+                Label("Input Bar", systemImage: "keyboard")
+                    .foregroundColor(showInputAccessory ? .primary : .secondary)
+                    .onTapGesture { showInputAccessory.toggle() }
+                
+                Label("Mentions", systemImage: "at")
+                    .foregroundColor(showMentions ? .primary : .secondary)
+                    .onTapGesture { showMentions.toggle() }
+                
+                Label("Reactions", systemImage: "face.smiling")
+                    .foregroundColor(enableReactions ? .primary : .secondary)
+                    .onTapGesture { enableReactions.toggle() }
+            }
+            .font(.system(size: 14))
+            
+            // P2P Peers section
+            if !dataSource.discoveredPeers.isEmpty || !dataSource.connectedPeers.isEmpty {
+                Divider()
+                
+                Text("Peers")
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                
+                ScrollView {
+                    VStack(spacing: 6) {
+                        ForEach(dataSource.discoveredPeers, id: \.peerID) { peer in
+                            HStack {
+                                Image(systemName: "person.circle")
+                                    .font(.caption)
+                                    .foregroundColor(.blue)
+                                
+                                Text(peer.displayName)
+                                    .font(.caption)
+                                    .lineLimit(1)
+                                
+                                Spacer()
+                                
+                                Toggle("", isOn: Binding(
+                                    get: { dataSource.enabledPeers.contains(peer.peerID) },
+                                    set: { _ in dataSource.togglePeer(peer) }
+                                ))
+                                .toggleStyle(SwitchToggleStyle(tint: .blue))
+                                .scaleEffect(0.7)
+                                .labelsHidden()
+                            }
+                        }
+                        
+                        ForEach(dataSource.connectedPeers.filter { connectedPeer in
+                            !dataSource.discoveredPeers.contains { $0.peerID == connectedPeer.peerID }
+                        }, id: \.peerID) { peer in
+                            HStack {
+                                Image(systemName: "person.circle.fill")
+                                    .font(.caption)
+                                    .foregroundColor(.green)
+                                
+                                Text(peer.displayName)
+                                    .font(.caption)
+                                    .lineLimit(1)
+                                
+                                Spacer()
+                                
+                                Toggle("", isOn: Binding(
+                                    get: { dataSource.enabledPeers.contains(peer.peerID) },
+                                    set: { _ in dataSource.togglePeer(peer) }
+                                ))
+                                .toggleStyle(SwitchToggleStyle(tint: .blue))
+                                .scaleEffect(0.7)
+                                .labelsHidden()
+                            }
+                        }
+                    }
+                }
+                .frame(maxHeight: 150)
+            }
+        }
+        .padding()
+        .frame(width: 250)
+        .background(UnifiedColors.secondaryBackground)
+        .cornerRadius(12)
+        .shadow(radius: 8)
+        .padding()
+        .transition(.asymmetric(
+            insertion: .move(edge: .trailing).combined(with: .opacity),
+            removal: .move(edge: .trailing).combined(with: .opacity)
+        ))
     }
     
     private var controlPanel: some View {
